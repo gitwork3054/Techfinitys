@@ -149,3 +149,40 @@ class ProjectDocumentAdmin(admin.ModelAdmin):
 @admin.register(DashboardLayout)
 class DashboardLayoutAdmin(admin.ModelAdmin):
     list_display = ('owner', 'scope', 'updated_at')
+
+# Finance records are view-only in Django admin. Issuing and payments must go
+# through the audited Billing Studio API, which enforces status transitions.
+from .models import BillingProfile, BillingSchedule, Invoice, InvoiceLine, InvoicePayment
+
+
+class FinanceReadOnly(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+    def has_change_permission(self, request, obj=None):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(FinanceReadOnly):
+    list_display=('invoice_number','client','package_name','status','total','paid_total','due_date','issued_at')
+    list_filter=('status','issue_date')
+    search_fields=('invoice_number','client__name','package_name')
+
+
+@admin.register(InvoicePayment)
+class InvoicePaymentAdmin(FinanceReadOnly):
+    list_display=('invoice','paid_on','amount','method','reference','recorded_by')
+    list_filter=('method','paid_on')
+
+
+@admin.register(BillingSchedule)
+class BillingScheduleAdmin(FinanceReadOnly):
+    list_display=('client','package_name','months','next_run_on','active','auto_issue')
+    list_filter=('active','months','auto_issue')
+
+
+@admin.register(BillingProfile)
+class BillingProfileAdmin(FinanceReadOnly):
+    list_display=('company_name','email','gstin','updated_at')

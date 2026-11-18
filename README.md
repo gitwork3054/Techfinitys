@@ -288,3 +288,39 @@ python manage.py migrate
 python manage.py test workspace.test_collaboration -v 2
 python manage.py test workspace -v 2
 ```
+
+---
+
+## Client invoicing / Billing Studio (November 2026)
+
+`Billing` now contains **real relational invoices** (not legacy JSON records): a client/package selection form, quantities and additional charges, discount and tax percentage, client billing details, due dates, and payments. All money calculations use Python `Decimal` and are recomputed on the server. Invoice numbers are assigned *only when issued* in the sequence `TF-YYYY-00001`. Issued invoice amounts, billing-party details and seller letterhead values cannot be edited; corrections require voiding an unpaid issued invoice and creating a new one. A paid invoice cannot be voided from the CRM UI.
+
+The generated A4 PDF is available to managers and to the **account owning client**, never an unrelated client. It contains company logo, branded header/footer, buyer/seller information, package lines, tax breakdown, totals, due date, payment history and a visual **authorized company stamp**. The stamp is a visual brand mark, *not* a cryptographic e-signature. The Super Admin may update letterhead/bank details and optionally upload a PNG/JPEG company stamp; issued invoices retain the seller text/stamp snapshot. Configure actual legal name, GSTIN, billing address and bank details before issuing real tax invoices. **GST rate and label are deliberately not auto-filled**: confirm the appropriate tax treatment with a qualified accountant. The system is not represented as e-invoicing or GST compliance software.
+
+Billing endpoints:
+
+| Route | Behavior |
+|---|---|
+| `GET /api/billing/` | Role-scoped invoice register; clients only see issued, paid or void invoices belonging to them |
+| `POST /api/billing/` | Create/edit draft, issue, record payment, void, save letterhead or recurring schedule (manager/admin) |
+| `GET /api/billing/pdf/<invoice_uuid>/` | Authenticated, no-cache branded PDF with authorization checks |
+| `GET /api/billing/export/` | Manager/admin CSV export |
+| `POST /api/billing/stamp/` | Super Admin PNG/JPEG company stamp upload |
+
+**Recurring billing:** Managers can set monthly, quarterly or annual plans. Each due cycle generates an invoice as a **draft**; optionally tick **Auto-issue** to issue it automatically when the generator runs. The generation command is idempotent, never charges a card, and never sends external emails:
+
+```bash
+python manage.py generate_invoices
+```
+
+Run it from a **secure daily scheduler** in a persistent environment. A free Render web app does **not** automatically run scheduled commands. No paid Render cron service is provisioned by this update. Do not enable automated issuing or enter real finance data until PostgreSQL and durable media storage are configured: current free SQLite and stamp-upload storage are temporary and can be lost on restart/redeploy. Test with representative fake data first.
+
+Run billing integration tests after installing dependencies:
+
+```bash
+python manage.py migrate
+python manage.py test workspace.test_billing -v 2
+python manage.py check
+```
+
+`reportlab` is required for invoice PDF generation and is included in `requirements.txt`.

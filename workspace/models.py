@@ -486,3 +486,6 @@ class DashboardLayout(models.Model):
 # The collaboration models live in their own module but are registered through
 # this standard Django models entrypoint for migrations and admin discovery.
 from .collaboration_models import ChatConversation, ChatParticipant, ChatMessage, RecentProjectVisit
+
+# Billing models live in their own module to keep the workspace model file manageable.
+from .billing_models import BillingProfile, InvoiceSequence, BillingSchedule, Invoice, InvoiceLine, InvoicePayment  # noqa: E402,F401

@@ -1,6 +1,10 @@
 from django.urls import path
-from . import views, operations, projects_plus, collaboration, google_signin
+from . import views, operations, projects_plus, collaboration, google_signin, billing
 urlpatterns=[
+ path('api/billing/', billing.billing_api, name='billing_api'),
+ path('api/billing/pdf/<uuid:invoice_id>/', billing.invoice_pdf, name='billing_pdf'),
+ path('api/billing/stamp/', billing.stamp_upload, name='billing_stamp'),
+ path('api/billing/export/', billing.billing_export, name='billing_export'),
  path('auth/google/',google_signin.google_start,name='google_start'),
  path('auth/google/callback/',google_signin.google_callback,name='google_callback'),
  path('api/collaboration/',collaboration.collaboration_api,name='collaboration_api'),
