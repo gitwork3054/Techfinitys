@@ -1,0 +1,31 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<script>(function(){try{var t=localStorage.getItem('techfinitys-theme')||'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+<title>Techfinitys® CRM</title>
+<link rel="icon" href="{% static 'images/techfinitys-logo.png' %}">
+<link rel="stylesheet" href="{% static 'workspace/app.css' %}?v=20261118-enterprise"><link rel="stylesheet" href="{% static 'workspace/enterprise.css' %}?v=20261118-enterprise">
+</head>
+<body>
+<div id="app" class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><img src="{% static 'images/techfinitys-logo.png' %}" alt="Techfinitys"><span>techfinitys<sup>®</sup></span></a>
+    <div class="workspace" id="workspaceCard"></div>
+    <span class="nav-label">TECHFINITYS OS · WORKSPACES</span>
+    <nav id="nav"></nav>
+    <div class="sidebar-bottom"><span class="online"></span>Connected workspace<small>Hierarchy-aware access</small></div>
+  </aside>
+  <div class="main">
+    <header class="topbar"><div class="topbar-left"><span class="crumb">Workspace</span><span>›</span><strong id="crumbTitle">Overview</strong></div><div class="topbar-actions"><button id="commandBtn" class="global-search" type="button" title="Search workspace (Ctrl + K)">⌕ <span>Search anything...</span> <kbd>⌘ K</kbd></button><button id="quickBtn" class="quick-btn" type="button">＋ New</button><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme"><span class="theme-icon">◐</span><span id="themeLabel">Dark</span></button><button class="icon" id="bellBtn">◌</button><span id="topAvatar" class="avatar small">TF</span><a class="toplink" href="/logout/">Sign out</a></div></header>
+    <div class="demo-bar"><span><i class="online"></i> SECURE WORKSPACE <strong class="demo-trail"> · Client data is isolated by account and role</strong></span><div><span id="todayTop"></span><strong id="rolePill"></strong></div></div>
+    <main id="mainContent"><div class="empty">Loading CRM…</div></main>
+    <footer><img src="{% static 'images/techfinitys-logo.png' %}" width="24" height="24" alt=""><strong>Techfinitys®</strong><span>Clients, people and delivery — connected.</span><small>Django CRM</small></footer>
+  </div>
+</div>
+<div id="toastHost" role="status" aria-live="polite"></div>
+<div id="modalRoot"></div>
+<script src="{% static 'workspace/app.js' %}?v=20261118-enterprise"></script>
+<script src="{% static 'workspace/enterprise.js' %}?v=20261118-enterprise"></script></body>
+</html>

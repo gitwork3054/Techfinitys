@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+media/uploads/
+staticfiles/
+.env
+
+.DS_Store
+.pytest_cache/
+.coverage
+*.log
+db.sqlite3-*
+media/
