@@ -188,6 +188,7 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['recipient', 'read_at'], name='tf_notif_unread_idx')]
 
 
 class ActivityLog(models.Model):
@@ -201,6 +202,8 @@ class ActivityLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['-created_at'], name='tf_activity_latest_idx'),
+                   models.Index(fields=['actor', '-created_at'], name='tf_activity_actor_idx')]
 
 
 class Record(models.Model):

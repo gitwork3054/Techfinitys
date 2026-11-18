@@ -324,3 +324,18 @@ python manage.py check
 ```
 
 `reportlab` is required for invoice PDF generation and is included in `requirements.txt`.
+
+## Super Admin Activity & Approval Center (November 2026)
+
+The **Admin activity** section is visible only to a provisioned **Super Admin** (`role=admin`). The notification bell opens the same command center, and the main dashboard shows a team-activity summary. Available tools:
+
+- **Approval queue:** pending employee leave requests, submitted timesheets and internal sign-offs. The Approve / Decline buttons call the existing, permission-checked `/api/operations/` actions. Employees receive the original decision notification, with reviewer and decision time saved by the operations model.
+- **Employee activity feed:** actor, client, action, description and original timestamp across attendance, breaks, time logs, tasks, task status, project/issue updates, internal approvals, support, client actions, billing and staff changes. Includes employee search, date range, type filters and cursor-based pagination.
+- **In-app alerts:** each new employee/manager `ActivityLog` is delivered to active Super Admins as an in-app notification tagged `#admin_activity`. Notifications are per recipient and can be marked read without changing the underlying audit. Direct chat messages appear in audit metadata **without message content** and do not trigger per-message bell notifications.
+- **Live overview:** active shifts, pending reviews, today’s activity, unread alerts. The browser refreshes when the admin activity page is open and visible (polling, not WebSockets).
+
+The server enforces admin-only read and mark-read access for `/api/admin-activity/`; changing a client-side role or route never unlocks that endpoint. The audit is **application-level**: it records actions that are logged by the CRM, not the contents of external websites, email, or employees’ devices. Data produced before logging was introduced cannot be backfilled automatically.
+
+Regression tests: `python manage.py test workspace.test_admin_activity workspace.test_billing -v 1`. Browser/JavaScript smoke: `node qa/node_activity_smoke.js`.
+
+**Production readiness:** The Render Free demo currently uses ephemeral SQLite. Employee events, approvals, and notifications can disappear across restarts or deploys. Use a durable PostgreSQL database, backups, a configured log-retention policy, and proper role offboarding before collecting actual employee records. In-app polling is active; email/push notifications are not configured. Follow applicable workplace privacy and employee-notice requirements when enabling centralized monitoring.

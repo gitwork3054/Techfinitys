@@ -19,7 +19,7 @@ from .models import (
     Member, Project, ClientAssignment, ChatConversation, ChatParticipant,
     ChatMessage, RecentProjectVisit,
 )
-from .views import _context, _client_ids_for
+from .views import _context, _client_ids_for, _log
 
 STAFF = ('admin', 'manager', 'employee')
 
@@ -156,6 +156,7 @@ def collaboration_api(request):
             if kind == 'direct':
                 key = ':'.join(str(x) for x in sorted(ids | {actor.id}))
                 # Unique direct_key prevents duplicated private threads.
+                created = False
                 try:
                     with transaction.atomic():
                         convo, created = ChatConversation.objects.get_or_create(
@@ -173,6 +174,8 @@ def collaboration_api(request):
                     ChatParticipant.objects.bulk_create([
                         ChatParticipant(conversation=convo,member_id=i) for i in ids | {actor.id}
                     ])
+            if kind == 'group' or created:
+                _log(actor, 'Started internal conversation', convo, detail='Group created' if kind == 'group' else 'Direct chat started (message contents private)')
             return JsonResponse({'ok':True,'conversation':_summary(convo,actor)})
         if action == 'send_chat':
             convo = _is_chat_member(actor, data.get('conversationId'))
@@ -183,6 +186,7 @@ def collaboration_api(request):
                 message = ChatMessage.objects.create(conversation=convo,sender=actor,body=body)
                 ChatConversation.objects.filter(pk=convo.pk).update(updated_at=message.created_at)
                 ChatParticipant.objects.filter(conversation=convo,member=actor).update(last_read_at=message.created_at)
+                _log(actor, 'Sent internal chat message', convo, detail='Team message sent (content is private)')
             return JsonResponse({'ok':True, 'message':_message(message)})
         if action == 'read_chat':
             convo = _is_chat_member(actor, data.get('conversationId'))
@@ -204,12 +208,14 @@ def collaboration_api(request):
             if convo.participants.count() + len(ids) > 20:
                 raise ValueError('Group limit is 20 members')
             ChatParticipant.objects.bulk_create([ChatParticipant(conversation=convo, member_id=i) for i in ids],ignore_conflicts=True)
+            _log(actor, 'Added group members', convo, detail=f'{len(ids)} members invited')
             return JsonResponse({'ok':True})
         if action == 'leave_chat':
             convo = _is_chat_member(actor, data.get('conversationId'))
             if convo.kind != 'group':
                 raise PermissionError('Direct messages cannot be left')
             ChatParticipant.objects.filter(conversation=convo,member=actor).delete()
+            _log(actor, 'Left internal conversation', convo, detail='Left a team group')
             return JsonResponse({'ok':True})
         raise ValueError('Unsupported action')
     except PermissionError as exc:
@@ -271,6 +277,8 @@ def own_profile(request):
         user.save(update_fields=['first_name','last_name'])
         member.phone=phone
         member.save(update_fields=['phone'])
+        if member.role in STAFF:
+            _log(member, 'Updated employee profile', member, detail='Profile information or photo changed')
         return JsonResponse({'ok':True,**_profile_json(member)})
     except PermissionError as exc:
         return JsonResponse({'error':str(exc)},status=403)

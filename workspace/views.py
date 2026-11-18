@@ -567,6 +567,7 @@ def workspace_api(request):
 
             if action == 'task_status':
                 t = Task.objects.select_related('client').get(pk=data.get('id'))
+                old_status = t.status
                 if not _can_access_client(member,t.client) or member.role=='client': raise PermissionError('Permission denied')
                 if member.role=='employee' and t.assigned_to_id not in (None,member.id) and not t.assignees.filter(pk=member.pk).exists(): raise PermissionError('This task is assigned to another employee')
                 next_status=data.get('status',t.status)
@@ -578,7 +579,7 @@ def workspace_api(request):
                 t.save(update_fields=['status','completed_at','percent_complete','updated_at'])
                 from .projects_plus import _recalculate_project
                 _recalculate_project(t.project_id)
-                _log(member,'Changed task status',t,t.client,t.get_status_display())
+                _log(member,'Changed task status',t,t.client,f'{t.title}: {old_status.replace("_"," ")} → {next_status.replace("_"," ")}')
                 return JsonResponse({'ok':True})
 
             # --- Updates / notes ----------------------------------------------------

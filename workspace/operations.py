@@ -109,8 +109,9 @@ def _notify(recipient, title, body='', client=None):
         Notification.objects.create(recipient=recipient, client=client, title=title[:220], body=body[:2000])
 
 
-def _notify_managers(title, body='', client=None):
-    for manager in Member.objects.filter(role__in=MANAGERS, is_active=True):
+def _notify_managers(title, body='', client=None, include_admins=True):
+    audience = MANAGERS if include_admins else ('manager',)
+    for manager in Member.objects.filter(role__in=audience, is_active=True):
         _notify(manager, title, body, client)
 
 
@@ -253,9 +254,9 @@ def operations_api(request):
                     if Attendance.objects.filter(employee=member, clock_out__isnull=True).exists():
                         raise ValueError('Clock out of the previous attendance session first')
                     mode = _choice(data.get('mode','office'), {'office','remote','field'}, 'work mode')
-                    Attendance.objects.create(employee=member,date=timezone.localdate(),clock_in=now,
+                    a = Attendance.objects.create(employee=member,date=timezone.localdate(),clock_in=now,
                                               mode=mode,note=_str(data.get('note'),'Note',400,False))
-                    _log(member,'Clocked in', detail=mode)
+                    _log(member,'Clocked in', a, detail=mode)
                 else:
                     a = Attendance.objects.select_for_update().filter(employee=member, clock_out__isnull=True).first()
                     if not a:
@@ -265,19 +266,21 @@ def operations_api(request):
                             raise ValueError('A break is already running')
                         a.break_started_at = now
                         a.save(update_fields=['break_started_at'])
+                        _log(member,'Started break',a,detail='Break started')
                     elif action == 'end_break':
                         if not a.break_started_at:
                             raise ValueError('No break is running')
                         a.break_seconds += max(0,int((now-a.break_started_at).total_seconds()))
                         a.break_started_at = None
                         a.save(update_fields=['break_seconds','break_started_at'])
+                        _log(member,'Resumed work',a,detail='Break ended')
                     else:
                         if a.break_started_at:
                             a.break_seconds += max(0,int((now-a.break_started_at).total_seconds()))
                             a.break_started_at = None
                         a.clock_out = now
                         a.save(update_fields=['clock_out','break_seconds','break_started_at'])
-                        _log(member,'Clocked out',detail=f'{a.worked_seconds//60} minutes')
+                        _log(member,'Clocked out',a,detail=f'{a.worked_seconds//60} minutes worked')
                 return JsonResponse({'ok':True})
 
             if action == 'request_leave':
@@ -290,7 +293,7 @@ def operations_api(request):
                 r = LeaveRequest.objects.create(employee=member,leave_type=_choice(data.get('type','annual'),
                     {'annual','sick','casual','unpaid','other'},'leave type'),start_date=start,end_date=end,
                     reason=_str(data.get('reason'),'Reason',2000,False))
-                _notify_managers(f'Leave approval: {_person(member)}',f'{start} to {end}')
+                _notify_managers(f'Leave approval: {_person(member)}',f'{start} to {end}',include_admins=False)
                 _log(member,'Requested leave',r,detail=f'{start} – {end}')
                 return JsonResponse({'ok':True,'id':str(r.id)})
 
@@ -354,7 +357,7 @@ def operations_api(request):
                     _notify(entry.employee, f'Time entry {decision}', entry.description, entry.client)
                 elif entry.employee_id == member.id and decision == 'submitted' and entry.status in ('draft','rejected'):
                     entry.status = 'submitted'; entry.reviewed_by=None; entry.reviewed_at=None
-                    _notify_managers(f'Timesheet submitted by {_person(member)}',entry.description,entry.client)
+                    _notify_managers(f'Timesheet submitted by {_person(member)}',entry.description,entry.client,include_admins=False)
                 else:
                     raise PermissionError('Time entry transition is not allowed')
                 entry.save()

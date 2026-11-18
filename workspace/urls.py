@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views, operations, projects_plus, collaboration, google_signin, billing
+from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center
 urlpatterns=[
+ path('api/admin-activity/',activity_center.admin_activity_api,name='admin_activity_api'),
  path('api/billing/', billing.billing_api, name='billing_api'),
  path('api/billing/pdf/<uuid:invoice_id>/', billing.invoice_pdf, name='billing_pdf'),
  path('api/billing/stamp/', billing.stamp_upload, name='billing_stamp'),
