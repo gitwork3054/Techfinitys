@@ -41,6 +41,8 @@ class Member(models.Model):
     department = models.CharField(max_length=100, blank=True)
     job_title = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=40, blank=True)
+    profile_photo = models.ImageField(upload_to="avatars/%Y/%m/", blank=True, null=True)
+    google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
     permissions = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -480,3 +482,7 @@ class DashboardLayout(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['owner', 'scope'], name='tf_unique_dashboard_layout')]
+
+# The collaboration models live in their own module but are registered through
+# this standard Django models entrypoint for migrations and admin discovery.
+from .collaboration_models import ChatConversation, ChatParticipant, ChatMessage, RecentProjectVisit

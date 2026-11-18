@@ -236,3 +236,55 @@ filter drawer, issue list, "All tasks", and mobile horizontal overflow.
 Python syntax and JavaScript parse checks pass. The Django test suite in
 `workspace/tests.py` now has project-tenant, document, issue and bulk-status
 regressions; run it on a machine with Django installed before handling real data.
+
+
+---
+
+## WorkChat, profile pictures, and Google sign-in (November 2026)
+
+The workspace includes a Recent Projects sidebar (recently visited, then recent accessible projects),
+profile photo editor (click the header avatar), employee-only WorkChat, and optional Google sign-in.
+
+### Private team messaging
+
+- **Chats > People** starts a direct conversation with an active employee.
+- **Chats > + New > Start group** creates a group chat with selected colleagues (up to 20 members).
+- Messages are stored in Django's database and access is checked on every request. Clients **cannot** read or join internal employee conversations.
+- The chat list refreshes every 30 seconds when the tab is visible; an open conversation refreshes every 6 seconds. This is polling, not WebSockets, voice calling, or Gmail inbox integration.
+- Recent project history is scoped to your assigned clients; the database prevents duplicate per-user visit records.
+
+### Profile photos
+
+Use the top-right avatar → **Edit profile**, choose a JPG/PNG/WebP smaller than 2 MB, and save.
+The server validates the photo, converts it to a 384px WebP thumbnail, and serves it through
+a permission-controlled endpoint. The local filesystem used for uploads on Render Free is
+**ephemeral**; for live users, configure durable object storage (S3/R2/etc.) before relying on profile photos.
+
+### Enable **Continue with Google** (Google OpenID Connect)
+
+This implements sign-in with a Google/Gmail account; it does **not** read emails or connect a Gmail inbox.
+The button remains explicitly disabled until OAuth credentials are configured.
+
+1. Visit [Google Cloud console](https://console.cloud.google.com/apis/credentials), configure the OAuth consent screen, then create an **OAuth 2.0 Client ID** of type **Web application**.
+2. Add the exact **Authorized redirect URI**:
+   `https://techfinitys-crm-8wp1.onrender.com/auth/google/callback/`.
+3. In **Render → techfinitys-crm-8wp1 → Environment**, set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`. You may also set `GOOGLE_OAUTH_REDIRECT_URI` to the URI above for explicit matching. **Never commit OAuth credentials to GitHub.**
+4. In Techfinitys CRM's Django administrator (`/admin/`), set each employee/client's own Google email on their existing Django user account. Email addresses must be unique. Google **does not** create new CRM accounts or assign roles; an active, pre-invited CRM member is required.
+5. Restart/redeploy via Render so the variables are available, then use **Continue with Google** on the login page.
+
+The server validates OAuth state, ID-token issuer/audience/expiry/nonce, verified email, and
+Google's immutable subject. It requests only `openid email profile` scopes and stores **no Google access/refresh tokens**.
+
+### Production data warning
+
+Render Free currently runs this CRM using SQLite and local media storage. Database data,
+chat messages, project visit history, and photos can disappear on redeploy or restart.
+Deploy with a durable PostgreSQL database and object storage before real organizational use.
+
+### Check security and regression tests
+
+```bash
+python manage.py migrate
+python manage.py test workspace.test_collaboration -v 2
+python manage.py test workspace -v 2
+```

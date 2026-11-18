@@ -121,3 +121,8 @@ else:
     MIDDLEWARE.insert(1,'whitenoise.middleware.WhiteNoiseMiddleware')
     STORAGES = {'default':{'BACKEND':'django.core.files.storage.FileSystemStorage'},
                 'staticfiles':{'BACKEND':'whitenoise.storage.CompressedManifestStaticFilesStorage'}}
+
+# Google OAuth client credentials must live in Render Environment, never Git.
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '').strip()
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '').strip()
+GOOGLE_OAUTH_REDIRECT_URI = os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', '').strip()

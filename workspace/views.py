@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import datetime
 from django.contrib.auth import authenticate, login, logout
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.core.exceptions import ValidationError
@@ -116,7 +117,11 @@ def login_view(request):
             login(request, user)
             return redirect('/')
         error = 'Invalid username or password.'
-    return render(request, 'workspace/login.html', {'error': error})
+    return render(request, 'workspace/login.html', {
+        'error': error,
+        'google_enabled': bool(settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET),
+        'google_error': request.GET.get('google_error', ''),
+    })
 
 
 def logout_view(request):
@@ -150,6 +155,7 @@ def _member_json(m):
         'clientName': m.client_account.name if m.client_account else '',
         'permissions': m.permissions or [],
         'active': m.is_active,
+        'profilePhotoUrl': f'/api/collaboration/avatar/{m.pk}/' if m.profile_photo else '',
     }
 
 
@@ -288,6 +294,7 @@ def workspace_api(request):
             'context': {
                 'id': member.id, 'user': request.user.username, 'name': request.user.get_full_name() or request.user.username,
                 'role': member.role, 'roleLabel': member.get_role_display(), 'permissions': member.permissions or [],
+                'profilePhotoUrl': f'/api/collaboration/avatar/{member.pk}/' if member.profile_photo else '',
                 'clientIds': [str(x) for x in client_ids], 'clientCodes': client_codes,
             },
             'clients': [_client_json(x) for x in clients],

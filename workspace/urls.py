@@ -1,6 +1,12 @@
 from django.urls import path
-from . import views, operations, projects_plus
+from . import views, operations, projects_plus, collaboration, google_signin
 urlpatterns=[
+ path('auth/google/',google_signin.google_start,name='google_start'),
+ path('auth/google/callback/',google_signin.google_callback,name='google_callback'),
+ path('api/collaboration/',collaboration.collaboration_api,name='collaboration_api'),
+ path('api/collaboration/thread/<uuid:conversation_id>/',collaboration.conversation_messages,name='conversation_messages'),
+ path('api/collaboration/profile/',collaboration.own_profile,name='own_profile'),
+ path('api/collaboration/avatar/<int:member_id>/',collaboration.avatar_file,name='avatar_file'),
  path('api/projects-plus/',projects_plus.projects_plus_api,name='projects_plus_api'),
  path('api/projects-plus/upload/',projects_plus.document_upload,name='project_document_upload'),
  path('api/projects-plus/document/<uuid:document_id>/',projects_plus.document_download,name='project_document_download'),
