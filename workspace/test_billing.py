@@ -3,12 +3,13 @@ import json
 from datetime import date
 from decimal import Decimal
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from .billing import generate_due_schedules, advance_months
 from .models import ClientAccount, Member
 from .billing_models import Invoice, InvoiceLine, InvoicePayment, BillingProfile, BillingSchedule
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)
 class InvoiceSecurityTests(TestCase):
     @classmethod
     def setUpTestData(cls):
