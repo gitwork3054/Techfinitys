@@ -27,7 +27,7 @@ class AdminActivityTests(TestCase):
         cls.manager=member('activity-manager','manager')
         cls.worker=member('activity-worker','employee')
         cls.other=member('activity-other','employee')
-        cls.client=member('activity-client','client',cls.client_a)
+        cls.portal=member('activity-client','client',cls.client_a)
         ClientAssignment.objects.create(client=cls.client_a, employee=cls.worker)
         ClientAssignment.objects.create(client=cls.client_b, employee=cls.other)
         cls.project=Project.objects.create(client=cls.client_a, title='Alpha project', status='active')
@@ -42,7 +42,7 @@ class AdminActivityTests(TestCase):
     def test_only_super_admin_can_see_feed_and_mark_read(self):
         path='/api/admin-activity/'
         self.assertEqual(self.client.get(path).status_code,401)
-        for actor in [self.worker,self.manager,self.client]:
+        for actor in [self.worker,self.manager,self.portal]:
             self.as_user(actor)
             self.assertEqual(self.client.get(path).status_code,403)
             self.assertEqual(self.client.get(path+'?summary=1').status_code,403)
@@ -140,7 +140,7 @@ class AdminActivityTests(TestCase):
         self.assertEqual(filtered['events'][0]['detail'],'Alpha iteration 42')
         self.assertEqual(self.client.get('/api/admin-activity/?before=bad').status_code,400)
         self.assertEqual(self.client.get('/api/admin-activity/?category=bad').status_code,400)
-        self.as_user(self.client)
+        self.as_user(self.portal)
         self.assertEqual(self.client.get('/api/admin-activity/?q=Alpha').status_code,403)
 
     def test_employee_chat_metadata_is_visible_but_message_body_is_not(self):

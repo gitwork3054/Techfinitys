@@ -18,7 +18,7 @@ from .views import _context
 
 STAFF_ROLES = ('employee', 'manager')
 SECTIONS = {
-    'attendance': ('clock', 'break', 'attendance', 'shift'),
+    'attendance': ('clock', 'break', 'attendance', 'shift', 'resumed work'),
     'leave': ('leave',),
     'tasks': ('task', 'project', 'milestone', 'issue', 'update', 'note', 'document', 'deliverable'),
     'time': ('time', 'timesheet', 'hours'),
