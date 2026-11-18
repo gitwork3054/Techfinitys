@@ -1,5 +1,7 @@
-# Demo deployment: free Render web service + free PostgreSQL.
-# Free Postgres is not suitable for durable production CRM data.
+# Temporary demonstration deployment on Render Free.
+# SQLite data and uploaded files are EPHEMERAL: lost on restart, redeploy or spin-down.
+# DO NOT use for real CRM clients, employees, attendance or financial records.
+# Switch to durable managed PostgreSQL and object storage before production.
 services:
   - type: web
     name: techfinitys-crm
@@ -18,14 +20,5 @@ services:
         value: 'admin'
       - key: CRM_ADMIN_PASSWORD
         generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: techfinitys-crm-db
-          property: connectionString
       - key: PYTHON_VERSION
         value: '3.13.2'
-databases:
-  - name: techfinitys-crm-db
-    databaseName: techfinitys_crm
-    plan: free
-    region: singapore
