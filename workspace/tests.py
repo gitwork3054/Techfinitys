@@ -192,3 +192,119 @@ class OperationsAccessTests(TestCase):
         self.assertEqual(self.save('task_status',id=str(dependent.pk),status='completed').status_code, 400)
         self.assertEqual(self.save('task_status',id=str(independent.pk),status='completed').status_code, 200)
         self.assertEqual(self.save('task_status',id=str(dependent.pk),status='completed').status_code, 200)
+
+
+class ProjectStudioTests(TestCase):
+    """Project workspace integration and cross-tenant permission regressions."""
+    @classmethod
+    def setUpTestData(cls):
+        def create(name, role, client=None):
+            user=User.objects.create_user(username=name, password='long-project-test-password-2345')
+            return Member.objects.create(user=user, role=role, client_account=client)
+        cls.alpha=ClientAccount.objects.create(name='Alpha', code='studio-alpha')
+        cls.beta=ClientAccount.objects.create(name='Beta', code='studio-beta')
+        cls.manager=create('studio_manager','manager')
+        cls.employee=create('studio_employee','employee')
+        cls.b_employee=create('studio_other','employee')
+        cls.client_a=create('studio_client_a','client',cls.alpha)
+        cls.client_b=create('studio_client_b','client',cls.beta)
+        ClientAssignment.objects.create(client=cls.alpha, employee=cls.employee)
+        ClientAssignment.objects.create(client=cls.beta, employee=cls.b_employee)
+        cls.project_a=Project.objects.create(client=cls.alpha,title='Alpha project',status='active')
+        cls.project_b=Project.objects.create(client=cls.beta,title='Beta project',status='active')
+        cls.task_a=Task.objects.create(client=cls.alpha,project=cls.project_a,title='Visible task',assigned_to=cls.employee)
+        cls.task_private=Task.objects.create(client=cls.alpha,project=cls.project_a,title='Internal brief',client_visible=False)
+        cls.task_b=Task.objects.create(client=cls.beta,project=cls.project_b,title='Unrelated',assigned_to=cls.b_employee)
+
+    def signed(self, member):
+        self.client.force_login(member.user)
+
+    def plus(self, action, **payload):
+        return self.client.post('/api/projects-plus/',json.dumps({'action':action, **payload}),content_type='application/json')
+
+    def test_task_list_grouping_and_cross_project_guards(self):
+        self.signed(self.employee)
+        result=self.plus('save_task_list',projectId=str(self.project_a.pk),title='Content planning')
+        self.assertEqual(result.status_code,200)
+        from .models import ProjectTaskList
+        task_list=ProjectTaskList.objects.get(project=self.project_a)
+        self.assertEqual(self.plus('set_task_extra',taskId=str(self.task_a.pk),taskListId=str(task_list.pk)).status_code,200)
+        self.task_a.refresh_from_db()
+        self.assertEqual(self.task_a.task_list,task_list)
+        self.assertEqual(self.plus('save_task_list',projectId=str(self.project_b.pk),title='Intrusion').status_code,400)
+        self.assertEqual(self.plus('set_task_extra',taskId=str(self.task_b.pk),taskListId=str(task_list.pk)).status_code,400)
+        self.assertEqual(self.plus('delete_task_list',projectId=str(self.project_a.pk),id=str(task_list.pk)).status_code,400)
+
+    def test_issue_visibility_and_status_separation(self):
+        from .models import ProjectIssue
+        ProjectIssue.objects.create(project=self.project_a,client=self.alpha,title='Internal issue',client_visible=False)
+        ProjectIssue.objects.create(project=self.project_b,client=self.beta,title='Other client issue')
+        self.signed(self.client_a)
+        result=self.plus('save_issue',projectId=str(self.project_a.pk),title='Public bug',priority='critical',clientVisible=False)
+        self.assertEqual(result.status_code,200)
+        created=ProjectIssue.objects.get(title='Public bug')
+        self.assertTrue(created.client_visible)
+        self.assertEqual(self.plus('issue_status',id=str(created.id),status='resolved').status_code,403)
+        items=self.client.get('/api/projects-plus/').json()['projectIssues']
+        self.assertEqual({i['title'] for i in items},{'Public bug'})
+        self.signed(self.client_b)
+        self.assertEqual(self.plus('save_issue',projectId=str(self.project_a.pk),title='Hijack').status_code,400)
+        self.assertNotIn('Public bug',{i['title'] for i in self.client.get('/api/projects-plus/').json()['projectIssues']})
+
+    def test_discussion_feed_privacy_and_parent_link(self):
+        from .models import ProjectDiscussion
+        internal=ProjectDiscussion.objects.create(project=self.project_a,author=self.employee,body='Internal budget',visibility='team')
+        self.signed(self.client_a)
+        self.assertEqual(self.plus('post_project_feed',projectId=str(self.project_a.id),body='Client question',visibility='team').status_code,200)
+        feed=self.client.get('/api/projects-plus/').json()['projectFeed']
+        self.assertEqual(len(feed),1)
+        self.assertEqual(feed[0]['visibility'],'client')
+        self.assertEqual(self.plus('post_project_feed',projectId=str(self.project_a.id),body='Leaky reply',parentId=str(internal.id)).status_code,403)
+        self.signed(self.employee)
+        self.assertEqual(self.plus('post_project_feed',projectId=str(self.project_b.id),body='Foreign project').status_code,400)
+
+    def test_bulk_status_is_atomic_and_dependency_safe(self):
+        self.signed(self.employee)
+        result=self.plus('bulk_task_status',taskIds=[str(self.task_a.id),str(self.task_b.id)],status='completed')
+        self.assertEqual(result.status_code,403)
+        self.task_a.refresh_from_db();self.assertEqual(self.task_a.status,'todo')
+        result=self.plus('bulk_task_status',taskIds=[str(self.task_a.id)],status='completed')
+        self.assertEqual(result.status_code,200)
+        self.task_a.refresh_from_db();self.project_a.refresh_from_db()
+        self.assertEqual(self.task_a.percent_complete,100)
+        self.assertEqual(self.task_a.status,'completed')
+        self.assertEqual(self.project_a.progress,50)
+
+    def test_dashboard_preferences_scoped_to_member_and_project(self):
+        self.signed(self.client_a)
+        self.assertEqual(self.plus('save_dashboard_layout',scope='project:'+str(self.project_b.id),widgets=['stats']).status_code,400)
+        self.assertEqual(self.plus('save_dashboard_layout',scope='global',widgets=['stats','today','issues']).status_code,200)
+        self.assertEqual(self.client.get('/api/projects-plus/').json()['dashboardLayouts'][0]['widgets'],['stats','today','issues'])
+        self.signed(self.client_b)
+        self.assertEqual(self.client.get('/api/projects-plus/').json()['dashboardLayouts'],[])
+
+    def test_project_documents_are_download_protected(self):
+        from tempfile import TemporaryDirectory
+        from django.test import override_settings
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import ProjectDocument
+        with TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=directory):
+            self.signed(self.employee)
+            response=self.client.post('/api/projects-plus/upload/',{
+                'projectId':str(self.project_a.id),'title':'Internal plan','clientVisible':'false',
+                'file':SimpleUploadedFile('plan.txt',b'internal text',content_type='text/plain'),
+            })
+            self.assertEqual(response.status_code,200)
+            doc=ProjectDocument.objects.get(project=self.project_a)
+            self.assertEqual(self.client.get('/api/projects-plus/document/'+str(doc.id)+'/').status_code,200)
+            self.signed(self.client_a)
+            self.assertEqual(self.client.get('/api/projects-plus/document/'+str(doc.id)+'/').status_code,404)
+            self.signed(self.client_b)
+            self.assertEqual(self.client.get('/api/projects-plus/document/'+str(doc.id)+'/').status_code,404)
+
+    def test_project_team_members_must_belong_to_client(self):
+        self.signed(self.manager)
+        self.assertEqual(self.plus('save_project_member',projectId=str(self.project_a.id),memberId=self.b_employee.id).status_code,403)
+        self.assertEqual(self.plus('save_project_member',projectId=str(self.project_a.id),memberId=self.employee.id).status_code,200)
+        self.signed(self.client_a)
+        self.assertEqual(self.plus('remove_project_member',projectId=str(self.project_a.id),memberId=self.employee.id).status_code,403)

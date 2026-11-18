@@ -1,4 +1,4 @@
-const state={ctx:null,clients:[],members:[],assignments:[],projects:[],tasks:[],updates:[],notes:[],events:[],notifications:[],activities:[],records:[],tab:'overview',loading:true,error:'',notice:''};
+const state={ctx:null,clients:[],members:[],assignments:[],projects:[],tasks:[],updates:[],notes:[],events:[],notifications:[],activities:[],records:[],taskLists:[],projectIssues:[],projectFeed:[],projectDocs:[],projectTeams:[],dashboardLayouts:[],defaultWidgets:{},projectGroups:[],tab:'overview',loading:true,error:'',notice:''};
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const cookie=n=>document.cookie.split('; ').find(x=>x.startsWith(n+'='))?.split('=')[1]||'';
 const api='/api/workspace/';
@@ -15,7 +15,26 @@ function fmtDate(v){if(!v)return '—';try{return new Date(v).toLocaleString('en
 function shortDate(v){if(!v)return '—';try{return new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}catch{return v}}
 function badge(v){let good=['active','completed','approved','published','resolved','paid'].some(x=>String(v).toLowerCase().includes(x)),warn=['review','blocked','onboarding','due','open','progress'].some(x=>String(v).toLowerCase().includes(x));return `<span class="badge ${good?'good':warn?'warn':''}">${esc(v||'—')}</span>`}
 async function post(data){let r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':decodeURIComponent(cookie('csrftoken'))},body:JSON.stringify(data)});let text=await r.text(),d={};try{d=text?JSON.parse(text):{}}catch(_){throw Error(r.ok?'Server returned an invalid response':`Server error ${r.status}. Check the Django terminal for details.`)}if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);state.notice='Saved successfully';await load();closeModal();return d}
-async function load(){state.loading=true;render();try{let [r,opsr]=await Promise.all([fetch(api,{cache:'no-store'}),fetch('/api/operations/',{cache:'no-store'})]);let d=await r.json(),ops=await opsr.json();if(!r.ok)throw Error(d.error||'Unable to load CRM');if(!opsr.ok)throw Error(ops.error||'Unable to load operations');Object.assign(state,d,ops);state.ctx=d.ctx||d.context||state.ctx;if(!state.ctx)throw Error('CRM account context is missing');state.error='';if(!(menus[state.ctx.role]||[]).includes(state.tab))state.tab='overview'}catch(e){state.error=e.message}finally{state.loading=false;render()}}
+async function load(){
+  state.loading=true;render();
+  try{
+    const [r,opsr,plusr]=await Promise.all([
+      fetch(api,{cache:'no-store'}),fetch('/api/operations/',{cache:'no-store'}),
+      fetch('/api/projects-plus/',{cache:'no-store'})
+    ]);
+    const [d,ops,plus]=await Promise.all([r.json(),opsr.json(),plusr.json()]);
+    if(!r.ok)throw Error(d.error||'Unable to load CRM');
+    if(!opsr.ok)throw Error(ops.error||'Unable to load operations');
+    if(!plusr.ok)throw Error(plus.error||'Unable to load project workspace');
+    Object.assign(state,d,ops,plus);
+    state.ctx=d.ctx||d.context||state.ctx;
+    if(!state.ctx)throw Error('CRM account context is missing');
+    state.error='';
+    if(!(menus[state.ctx.role]||[]).includes(state.tab))state.tab='overview';
+  }catch(e){state.error=e.message}
+  finally{state.loading=false;render()}
+}
+
 function go(t){state.tab=t;render()}
 function shell(){if(!state.ctx)return;$('#crumbTitle').textContent=labels[state.tab]||state.tab;$('#rolePill').textContent=roleName();$('#topAvatar').textContent=initials(state.ctx.name);$('#workspaceCard').innerHTML=`<span class="avatar">${initials(state.ctx.name)}</span><div><strong>${esc(state.ctx.name)}</strong><small>${esc(roleName())}</small></div>`;$('#nav').innerHTML=(menus[state.ctx.role]||[]).map(k=>`<button class="${state.tab===k?'active':''}" data-tab="${k}"><span>${icon(k)}</span>${labels[k]}${k==='updates'&&state.updates.length?`<em>${state.updates.length}</em>`:''}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.tab))}
 function icon(k){return ({overview:'▦',clients:'♟',team:'♜',assignments:'⇄',projects:'◇',tasks:'☑',updates:'↻',calendar:'▣',notes:'≣',content:'◫',files:'▰',tickets:'▱',packages:'◇',deliverables:'☑',campaigns:'▥',shoots:'◉',workflows:'⌘',invoices:'▤',reports:'▥',audit:'⌘',settings:'⚙'})[k]||'•'}

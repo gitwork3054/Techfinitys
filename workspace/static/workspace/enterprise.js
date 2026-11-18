@@ -62,6 +62,7 @@
   const progress = (done,total) => `<div class="os-progress"><span style="width:${total?Math.round(done/total*100):0}%"></span></div>`;
 
   function commandCenter(){
+    if (window.TFPlus?.dashboard) return window.TFPlus.dashboard();
     const role=state.ctx.role, isClient=role==='client';
     const personalTasks=isClient?state.tasks:role==='employee'?state.tasks.filter(t=>t.assignedTo===state.ctx.id):state.tasks;
     const outstanding=personalTasks.filter(t=>t.status!=='completed');

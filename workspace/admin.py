@@ -115,3 +115,37 @@ class LeadAdmin(admin.ModelAdmin):
     list_display=('name','company','stage','estimated_value','owner','converted_client')
     list_filter=('stage',)
     search_fields=('name','company','email')
+
+
+from .models import (ProjectTaskList, ProjectTeam, ProjectIssue, ProjectDiscussion,
+                     ProjectDocument, DashboardLayout)
+
+@admin.register(ProjectTaskList)
+class ProjectTaskListAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'position', 'created_at')
+    search_fields = ('title', 'project__title')
+
+@admin.register(ProjectTeam)
+class ProjectTeamAdmin(admin.ModelAdmin):
+    list_display = ('project', 'member', 'role', 'created_at')
+    list_filter = ('role',)
+
+@admin.register(ProjectIssue)
+class ProjectIssueAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'status', 'priority', 'assigned_to', 'updated_at')
+    list_filter = ('status', 'priority', 'client_visible')
+    search_fields = ('title', 'description', 'project__title')
+
+@admin.register(ProjectDiscussion)
+class ProjectDiscussionAdmin(admin.ModelAdmin):
+    list_display = ('project', 'author', 'visibility', 'created_at')
+    list_filter = ('visibility',)
+
+@admin.register(ProjectDocument)
+class ProjectDocumentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'uploaded_by', 'client_visible', 'created_at')
+    list_filter = ('client_visible',)
+
+@admin.register(DashboardLayout)
+class DashboardLayoutAdmin(admin.ModelAdmin):
+    list_display = ('owner', 'scope', 'updated_at')

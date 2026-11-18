@@ -78,6 +78,8 @@ class Project(models.Model):
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     progress = models.PositiveSmallIntegerField(default=0)
+    group_name = models.CharField(max_length=100, blank=True)
+    tags = models.JSONField(default=list, blank=True)
     created_by = models.ForeignKey(Member, null=True, blank=True, on_delete=models.SET_NULL, related_name='projects_created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -107,6 +109,11 @@ class Task(models.Model):
     client_visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    percent_complete = models.PositiveSmallIntegerField(default=0)
+    billing_type = models.CharField(max_length=15, choices=[('billable','Billable'),('nonbillable','Non-billable')], default='billable')
+    task_list = models.ForeignKey('ProjectTaskList', null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
+    assignees = models.ManyToManyField(Member, blank=True, related_name='coassigned_tasks')
 
     blocked_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='dependent_tasks')
     tags = models.JSONField(default=list, blank=True)
@@ -383,3 +390,93 @@ class Lead(models.Model):
     class Meta:
         ordering = ['-updated_at']
         indexes = [models.Index(fields=['stage', 'owner'], name='tf_lead_stage_owner_idx')]
+
+
+# Project operations: each object is backed by a relational client-scoped model.
+# These power task lists, threaded project feeds, issues, documents and widgets.
+class ProjectTaskList(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='task_lists')
+    title = models.CharField(max_length=120)
+    position = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['position', 'created_at']
+        constraints = [models.UniqueConstraint(fields=['project', 'title'], name='tf_unique_project_task_list')]
+
+
+class ProjectTeam(models.Model):
+    ROLE = [('lead', 'Project lead'), ('contributor', 'Contributor'), ('observer', 'Observer')]
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='team_memberships')
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='project_memberships')
+    role = models.CharField(max_length=16, choices=ROLE, default='contributor')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['project', 'member'], name='tf_unique_project_team')]
+
+
+class ProjectIssue(models.Model):
+    STATUS = [('open', 'Open'), ('in_progress', 'In progress'), ('resolved', 'Resolved'), ('closed', 'Closed')]
+    PRIORITY = [('low', 'Low'), ('normal', 'Normal'), ('high', 'High'), ('critical', 'Critical')]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='issues')
+    client = models.ForeignKey(ClientAccount, on_delete=models.CASCADE, related_name='project_issues')
+    task = models.ForeignKey(Task, on_delete=models.SET_NULL, null=True, blank=True, related_name='project_issues')
+    title = models.CharField(max_length=220)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='open', db_index=True)
+    priority = models.CharField(max_length=12, choices=PRIORITY, default='normal')
+    reported_by = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues_reported')
+    assigned_to = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues_assigned')
+    due_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    client_visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [models.Index(fields=['project', 'status'], name='tf_issue_project_status_idx')]
+
+
+class ProjectDiscussion(models.Model):
+    VISIBILITY = [('client', 'Client and team'), ('team', 'Internal team')]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='discussions')
+    author = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name='project_posts')
+    body = models.TextField()
+    visibility = models.CharField(max_length=12, choices=VISIBILITY, default='client')
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['project', 'created_at'], name='tf_feed_project_time_idx')]
+
+
+class ProjectDocument(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='documents')
+    uploaded_by = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name='project_uploads')
+    title = models.CharField(max_length=220)
+    attachment = models.FileField(upload_to='project_documents/%Y/%m/')
+    size_bytes = models.PositiveIntegerField(default=0)
+    client_visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class DashboardLayout(models.Model):
+    owner = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='dashboard_layouts')
+    # 'global' or 'project:<project UUID>'
+    scope = models.CharField(max_length=60, default='global')
+    widgets = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'scope'], name='tf_unique_dashboard_layout')]

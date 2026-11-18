@@ -167,6 +167,8 @@ def _project_json(p):
     return {
         'id': str(p.id), 'clientId': str(p.client_id), 'clientName': p.client.name,
         'title': p.title, 'description': p.description, 'status': p.status,
+        'code': f'TF-{str(p.id)[:6].upper()}', 'groupName': p.group_name, 'tags': p.tags or [],
+        'createdAt': p.created_at.isoformat(), 'updatedAt': p.updated_at.isoformat(),
         'statusLabel': p.get_status_display(), 'progress': p.progress,
         'managerId': p.manager_id, 'managerName': (p.manager.user.get_full_name() or p.manager.user.username) if p.manager else '',
         'ownerId': p.owner_id, 'ownerName': (p.owner.user.get_full_name() or p.owner.user.username) if p.owner else '',
@@ -178,6 +180,12 @@ def _project_json(p):
 def _task_json(t):
     return {
         'id': str(t.id), 'clientId': str(t.client_id), 'clientName': t.client.name,
+        'code': f'T-{str(t.id)[:7].upper()}', 'taskListId': str(t.task_list_id) if t.task_list_id else '',
+        'assigneeIds': list(t.assignees.values_list('id', flat=True)),
+        'assigneeNames': [m.user.get_full_name() or m.user.username for m in t.assignees.all()],
+        'percentComplete': t.percent_complete, 'billingType': t.billing_type,
+        'createdAt': t.created_at.isoformat(), 'updatedAt': t.updated_at.isoformat(),
+        'completedAt': t.completed_at.isoformat() if t.completed_at else '',
         'projectId': str(t.project_id) if t.project_id else '', 'projectName': t.project.title if t.project else '',
         'parentId': str(t.parent_id) if t.parent_id else '',
         'title': t.title, 'description': t.description, 'status': t.status,
@@ -243,7 +251,7 @@ def workspace_api(request):
             members = Member.objects.select_related('user','manager__user','client_account').filter(Q(pk=member.pk) | Q(client_assignments__client_id__in=client_ids)).distinct()
 
         projects = Project.objects.filter(client_id__in=client_ids).select_related('client','manager__user','owner__user')
-        tasks = Task.objects.filter(client_id__in=client_ids).select_related('client','project','assigned_to__user','created_by__user')
+        tasks = Task.objects.filter(client_id__in=client_ids).select_related('client','project','task_list','assigned_to__user','created_by__user').prefetch_related('assignees__user')
         if member.role == 'client':
             tasks = tasks.filter(client_visible=True)
         updates = Update.objects.filter(client_id__in=client_ids).select_related('client','task','author__user')
@@ -443,6 +451,14 @@ def workspace_api(request):
                 p.client=client; p.title=(data.get('title') or '').strip(); p.description=data.get('description',''); p.status=data.get('status','planned')
                 if p.status not in dict(Project.STATUS): raise ValueError('Invalid project status')
                 p.progress=max(0,min(100,int(data.get('progress') or 0)))
+                if 'groupName' in data:
+                    p.group_name = str(data.get('groupName') or '').strip()[:100]
+                if 'tags' in data:
+                    tags=data['tags']
+                    if isinstance(tags,str): tags=[v.strip() for v in tags.split(',') if v.strip()]
+                    if not isinstance(tags,list) or len(tags)>15 or any(not isinstance(v,str) or len(v)>35 for v in tags):
+                        raise ValueError('Project tags must contain up to 15 short labels')
+                    p.tags=tags
                 p.manager=_assigned_staff_member(client,data.get('managerId'))
                 p.owner=_assigned_staff_member(client,data.get('ownerId'))
                 p.start_date=parse_date(data.get('startDate') or '') if data.get('startDate') else None
@@ -460,13 +476,18 @@ def workspace_api(request):
                 task_id = data.get('id')
                 t = Task.objects.filter(pk=task_id, client=client).first() if task_id else Task(client=client, created_by=member)
                 if task_id and not t: raise PermissionError('Task does not belong to this workspace')
-                if t.pk and member.role == 'employee' and t.assigned_to_id not in (None, member.id):
+                if task_id and member.role == 'employee' and t.assigned_to_id not in (None, member.id) and not t.assignees.filter(pk=member.pk).exists():
                     raise PermissionError('Cannot edit a task assigned to a different employee')
                 if data.get('status','todo') not in dict(Task.STATUS) or data.get('priority','normal') not in dict(Task.PRIORITY):
                     raise ValueError('Invalid task status or priority')
+                previous_project_id = t.project_id
                 t.client=client; t.title=(data.get('title') or '').strip(); t.description=data.get('description',''); t.status=data.get('status','todo'); t.priority=data.get('priority','normal')
                 t.project=Project.objects.filter(pk=data.get('projectId'),client=client).first() if data.get('projectId') else None
+                if data.get('projectId') and not t.project:
+                    raise PermissionError('Project does not belong to this client')
                 t.parent=Task.objects.filter(pk=data.get('parentId'),client=client).first() if data.get('parentId') else None
+                if t.parent and t.project_id != t.parent.project_id:
+                    raise ValueError('Parent task must belong to the same project')
                 if t.parent_id == t.pk: raise ValueError('A task cannot be its own parent')
                 blocker_id = data.get('blockedBy')
                 if blocker_id:
@@ -497,15 +518,42 @@ def workspace_api(request):
                 if assignee and assignee.role=='employee' and not ClientAssignment.objects.filter(client=client,employee=assignee,active=True).exists():
                     raise ValueError('Assign this employee to the client before assigning a task')
                 t.assigned_to=assignee; t.recurrence=data.get('recurrence',''); t.client_visible=bool(data.get('clientVisible',True))
+                if 'taskListId' in data:
+                    from .models import ProjectTaskList
+                    task_list_id=data.get('taskListId')
+                    task_list=ProjectTaskList.objects.filter(pk=task_list_id, project=t.project).first() if task_list_id and t.project else None
+                    if task_list_id and not task_list: raise ValueError('Task list belongs to another project')
+                    t.task_list=task_list
+                elif t.task_list_id and t.task_list.project_id != t.project_id:
+                    t.task_list=None
+                if 'billingType' in data:
+                    billing=data['billingType']
+                    if billing not in ('billable','nonbillable'): raise ValueError('Invalid billing type')
+                    t.billing_type=billing
+                if 'percentComplete' in data:
+                    pct=int(data['percentComplete'])
+                    if not 0<=pct<=100: raise ValueError('Completion percentage must be 0–100')
+                    t.percent_complete=pct
                 t.estimated_hours=data.get('estimatedHours') or 0
                 t.start_at=parse_datetime(data.get('startAt')) if data.get('startAt') else None
                 t.due_at=parse_datetime(data.get('dueAt')) if data.get('dueAt') else None
                 if t.status=='completed' and t.blocked_by_id and t.blocked_by.status!='completed':
                     raise ValueError('Complete the dependency before completing this task')
                 if t.status=='completed' and not t.completed_at: t.completed_at=timezone.now()
+                if t.status=='completed': t.percent_complete=100
+                elif t.percent_complete==100: t.percent_complete=99
                 if t.status!='completed': t.completed_at=None
                 if not t.title: raise ValueError('Task title is required')
-                t.save(); _log(member,'Saved task',t,client,f'{t.title} → {assignee or "Unassigned"}')
+                t.save()
+                if 'assigneeIds' in data:
+                    from .projects_plus import _staff_for_project
+                    ids=data.get('assigneeIds')
+                    if not isinstance(ids,list) or len(ids)>12: raise ValueError('Up to 12 task collaborators are supported')
+                    t.assignees.set([_staff_for_project(t.project or Project(client=client),pk) for pk in set(ids)])
+                from .projects_plus import _recalculate_project
+                _recalculate_project(t.project_id)
+                if previous_project_id != t.project_id: _recalculate_project(previous_project_id)
+                _log(member,'Saved task',t,client,f'{t.title} → {assignee or "Unassigned"}')
                 if assignee and assignee != member:
                     Notification.objects.create(recipient=assignee,client=client,title=f'Task assigned: {t.title}',body=f'{client.name} · {t.get_priority_display()} priority')
                 return JsonResponse({'ok':True})
@@ -513,12 +561,16 @@ def workspace_api(request):
             if action == 'task_status':
                 t = Task.objects.select_related('client').get(pk=data.get('id'))
                 if not _can_access_client(member,t.client) or member.role=='client': raise PermissionError('Permission denied')
-                if member.role=='employee' and t.assigned_to_id not in (None,member.id): raise PermissionError('This task is assigned to another employee')
+                if member.role=='employee' and t.assigned_to_id not in (None,member.id) and not t.assignees.filter(pk=member.pk).exists(): raise PermissionError('This task is assigned to another employee')
                 next_status=data.get('status',t.status)
                 if next_status not in dict(Task.STATUS): raise ValueError('Invalid task status')
                 if next_status=='completed' and t.blocked_by_id and t.blocked_by.status!='completed':
                     raise ValueError('Complete the dependency first')
-                t.status=next_status; t.completed_at=timezone.now() if t.status=='completed' else None; t.save(update_fields=['status','completed_at','updated_at'])
+                t.status=next_status; t.completed_at=timezone.now() if t.status=='completed' else None
+                t.percent_complete=100 if next_status=='completed' else min(t.percent_complete,99)
+                t.save(update_fields=['status','completed_at','percent_complete','updated_at'])
+                from .projects_plus import _recalculate_project
+                _recalculate_project(t.project_id)
                 _log(member,'Changed task status',t,t.client,t.get_status_display())
                 return JsonResponse({'ok':True})
 

@@ -468,7 +468,7 @@ def operations_api(request):
                         and not SavedView.objects.filter(owner=member,module='tasks',name=name).exists()):
                     raise ValueError('Maximum 20 saved views per user')
                 filters = data.get('filters',{})
-                if not isinstance(filters,dict) or set(filters) - {'search','client','owner','status','priority','timespan','view'}:
+                if not isinstance(filters,dict) or set(filters) - {'search','client','owner','status','priority','timespan','view','taskName','projectId','projectGroup','projectStatus','completion','teamMember','startDate','dueDate','recurrence','createdTime','completionDate','modifiedTime','createdBy','taskList','tags','billingType','taskId','groupBy','logic'}:
                     raise ValueError('Unsupported view filters')
                 if any(not isinstance(v,str) or len(v)>150 for v in filters.values()):
                     raise ValueError('Filter values must be short strings')

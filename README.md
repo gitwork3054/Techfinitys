@@ -187,3 +187,52 @@ a free evaluation database. The application currently saves uploaded files to th
 local filesystem; **those uploads are not durable on Render** without external object storage.
 Use a paid persistent PostgreSQL plan, object storage, monitored backups and a production
 security review before inviting real clients.
+
+## Project Studio: task lists, advanced filters and per-project delivery
+
+The integrated **Project Studio** workspace builds on the existing project and task
+models; it is not a static Zoho copy or an integration with Zoho.
+
+* **Projects register:** sortable project ID/name/owner/status/progress/task/issue/date columns,
+  search, status/group filters, numbered pages, team progress and CSV export.
+* **Individual project:** dashboard, task lists, project users, reports, documents,
+  phases (milestones), time logs, issues, threaded feed, timesheets and approvals.
+* **Tasks:** sortable table or Kanban board, project/task-list/status/owner grouping,
+  multi-person collaborators, completion percentages, priorities, due-date alerts,
+  bulk status updates and dependency checks.
+* **Advanced filtering:** 22 conditions, Any/All logic, time spans, owner, project,
+  tags, billing, dates, recurrence, completion percentage and saved personal views.
+* **Project issues:** track blockers with assignees, severity, status transitions,
+  client visibility, notifications and CSV exports.
+* **Project feed:** thread replies with visibility scopes (team-only vs client-visible).
+* **Files:** project-specific document upload, access-checked download and client
+  visibility, currently using the local ephemeral filesystem.
+* **Dashboards:** selectable/reorderable widgets saved per person for the global
+  dashboard or each project, charts computed from actual scoped tasks, and rule-based
+  task-priority suggestions (not an external AI service).
+
+New schema migration: `workspace/migrations/0003_project_workspaces.py`.
+New backend endpoints: `/api/projects-plus/`, `/api/projects-plus/upload/`,
+`/api/projects-plus/document/<uuid>/`, `/api/project-export/projects/`,
+`/api/project-export/tasks/`, `/api/project-export/issues/`.
+
+### Hosting note: deployed Render demonstration
+
+The current `render.yaml` deliberately provisions **only a free web service**:
+there is no free PostgreSQL provisioned for this CRM because the workspace's
+one free database is owned by an independent payment-gateway project. The CRM
+therefore uses **temporary local SQLite** on Render. Data and document uploads
+can disappear at any moment on restart, redeploy or container replacement.
+Never upload real customer/client/employee records to this preview. Move to a
+separate **persistent PostgreSQL** database, secured object storage, backup and
+migration-tested runtime before production use. The earlier README's generic
+example discussing free managed PostgreSQL is superseded by this note.
+
+### Verification
+
+Browser QA was performed with Chromium using representative **mock API data**
+and covers the project register, per-project dashboard, task grid, full advanced
+filter drawer, issue list, "All tasks", and mobile horizontal overflow.
+Python syntax and JavaScript parse checks pass. The Django test suite in
+`workspace/tests.py` now has project-tenant, document, issue and bulk-status
+regressions; run it on a machine with Django installed before handling real data.
