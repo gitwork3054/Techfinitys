@@ -130,7 +130,14 @@ footer strong,footer span,footer small{font-size:11px}
 .os-three .os-number-card{min-height:126px}
 .os-attendance-hero{margin-bottom:19px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 30px;border-radius:19px;background:linear-gradient(120deg,#252e66,#4a58a9);color:#fff}
 .os-attendance-hero .os-label{color:#c5c9ff}.os-attendance-hero h2{color:#fff;margin:9px 0 4px;font-size:23px;letter-spacing:-.8px}.os-attendance-hero p{color:#d2dafa;margin:0;font-size:12px}
-.os-attendance-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.os-attendance-controls .os-button{background:#fff;color:#393f87;border-color:#ffffff66}.os-attendance-controls .os-select{background:#ffffffef;color:#27335a;border:0}
+/* Keep attendance actions readable in both themes and every interaction state. */
+.os-attendance-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.os-attendance-controls .os-button{background:#fff;color:#303a77;border-color:#fff}
+.os-attendance-controls .os-button:hover{background:#e9ecff;color:#202b64;border-color:#fff}
+.os-attendance-controls .os-button.filled{background:linear-gradient(125deg,#554ae5,#7166f0);color:#fff;border-color:#b6b8ff;box-shadow:0 7px 17px rgba(14,19,74,.18)}
+.os-attendance-controls .os-button.filled:hover{background:linear-gradient(125deg,#433bc6,#6256dd);color:#fff;border-color:#e0e0ff;filter:none}
+.os-attendance-controls .os-button.filled:focus-visible{color:#fff}
+.os-attendance-controls .os-select{background:#ffffffef;color:#27335a;border:0}
 .os-table-wrap{overflow:auto;width:100%;border-radius:12px;border:1px solid var(--border)}
 .os-table{margin:0;width:100%;border-collapse:collapse;white-space:nowrap}
 .os-table th{padding:14px 14px;font-size:10px;background:var(--raised);color:var(--muted);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.65px}
