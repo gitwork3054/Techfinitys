@@ -8,10 +8,14 @@
     view: 'list', sort: 'dueAt', desc: false, page: 1, groupBy: 'taskList',
     drawer: false, selected: new Set(), collapsed: new Set(),
     filters: { status: 'open', search: '', logic: 'all' },
+    homeTaskQuery: '', homeTaskStatus: 'all', homeTaskLimit: 15,
     issuesStatus: 'open', feedProject: '', taskProject: '',
   };
   const isStaff = () => state.ctx?.role !== 'client';
   const isManager = () => ['admin', 'manager'].includes(state.ctx?.role);
+  const isEmployee = () => state.ctx?.role === 'employee';
+  const isMyTask = t => String(t.assignedTo)===String(roleId()) || (t.assigneeIds||[]).some(id=>String(id)===String(roleId()));
+  const canChangeTask = t => isManager() || (isEmployee() && isMyTask(t));
   const arr = key => state[key] || [];
   const safe = value => esc(value ?? '');
   const date = value => value ? new Date(value).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -79,8 +83,8 @@
     const pageSize=25,pageCount=Math.max(1,Math.ceil(rows.length/pageSize));ui.projectPage=Math.min(pageCount,Math.max(1,ui.projectPage));
     const page=rows.slice((ui.projectPage-1)*pageSize,ui.projectPage*pageSize);
     const col=(k,t)=>`<button class="tf-column" onclick="TFPlus.sortProjects('${k}')">${t}${ui.projectSort===k?(ui.projectDesc?' ↓':' ↑'):''}</button>`;
-    return `${header('Projects','A complete view of projects, teams, delivery progress and deadlines.',`${button('↓ Export CSV',"location.href='/api/project-export/projects/'")}${isStaff()?button('＋ New project',"projectModal()",'primary'):''}`)}
-      <section class="tf-pane tf-project-summary"><div class="tf-sparkline"></div><div><span>Active projects</span><strong>${state.projects.filter(p=>p.status==='active').length}</strong></div><div><span>Completed projects</span><strong>${state.projects.filter(p=>p.status==='completed').length}</strong></div><div><span>All open tasks</span><strong>${state.tasks.filter(t=>t.status!=='completed').length}</strong></div><div><span>Issues to resolve</span><strong>${arr('projectIssues').filter(i=>!['resolved','closed'].includes(i.status)).length}</strong></div></section>
+    return `${header('Projects','A complete view of projects, teams, delivery progress and deadlines.',`${isManager()?`${button('↓ Export CSV',"location.href='/api/project-export/projects/'")}${button('＋ New project',"projectModal()",'primary')}`:''}`)}
+      <section class="tf-pane tf-project-summary"><div class="tf-sparkline"></div><div><span>Active projects</span><strong>${state.projects.filter(p=>p.status==='active').length}</strong></div><div><span>Completed projects</span><strong>${state.projects.filter(p=>p.status==='completed').length}</strong></div><div><span>All open tasks</span><strong>${state.tasks.filter(t=>t.status!=='completed'&&(!isEmployee()||isMyTask(t))).length}</strong></div><div><span>Issues to resolve</span><strong>${arr('projectIssues').filter(i=>!['resolved','closed'].includes(i.status)).length}</strong></div></section>
       <section class="tf-pane tf-list-pane"><div class="tf-toolbar">
         <div class="tf-field-search"><span>⌕</span><input aria-label="Search projects" placeholder="Search projects, clients, owners…" value="${safe(ui.projectQuery)}" oninput="TFPlus.setProjectFilter('projectQuery',this.value)"></div>
         <select aria-label="Project status" onchange="TFPlus.setProjectFilter('projectStatus',this.value)">${[['all','All projects'],['active','Active'],['planned','Planned'],['on_hold','On hold'],['completed','Completed']].map(([v,t])=>`<option value="${v}" ${ui.projectStatus===v?'selected':''}>${t}</option>`).join('')}</select>
@@ -95,21 +99,24 @@
   }
 
   function openProject(id,tab='dashboard'){
-    if(!projectBy(id))return;ui.project=id;ui.projectTab=tab;ui.page=1;ui.selected.clear();state.tab='projects';render();
+    if(!projectBy(id))return;
+    if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(tab))tab='dashboard';
+    ui.project=id;ui.projectTab=tab;ui.page=1;ui.selected.clear();state.tab='projects';render();
     try{history.replaceState(null,'','#projects/'+id+'/'+tab)}catch(_){}
   }
   function backProjects(){ui.project='';ui.taskProject='';ui.page=1;render();try{history.replaceState(null,'','#projects')}catch(_){}}
   function projectDetail(){
     const p=projectBy(ui.project);if(!p)return projectList();
-    const tabs=[['dashboard','Dashboard'],['tasks','Tasks'],['users','Users'],['reports','Reports'],['documents','Documents'],['phases','Phases'],['timelogs','Time Logs'],['issues','Issues'],['feed','Feed'],['timesheets','Timesheets'],['approvals','Approvals']];
-    const buttons=isStaff()?`${button('✎ Edit',`projectModal('${p.id}')`)}${button('＋ Add task',`TFPlus.taskEditor('','${p.id}')`,'primary')}`:button('＋ Support ticket',"go('tickets')",'primary');
+    if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(ui.projectTab))ui.projectTab='dashboard';
+    const tabs=isEmployee()?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed']]:[['dashboard','Dashboard'],['tasks','Tasks'],['users','Users'],['reports','Reports'],['documents','Documents'],['phases','Phases'],['timelogs','Time Logs'],['issues','Issues'],['feed','Feed'],['timesheets','Timesheets'],['approvals','Approvals']];
+    const buttons=isManager()?`${button('✎ Edit',`projectModal('${p.id}')`)}${button('＋ Add task',`TFPlus.taskEditor('','${p.id}')`,'primary')}`:state.ctx.role==='client'?button('＋ Support ticket',"go('tickets')",'primary'):'';
     const tabHtml={dashboard:()=>dashboard('project:'+p.id,p),tasks:()=>taskWorkspace(p.id),users:()=>projectUsers(p),reports:()=>projectReports(p),documents:()=>projectDocuments(p),phases:()=>projectPhases(p),timelogs:()=>projectTimeLogs(p),issues:()=>issueWorkspace(p.id),feed:()=>projectFeed(p),timesheets:()=>projectTimeLogs(p,true),approvals:()=>projectApprovals(p)}[ui.projectTab] || (()=>dashboard('project:'+p.id,p));
     return `<div class="tf-breadcrumb"><button onclick="TFPlus.backProjects()">Projects</button><span>›</span><span>${safe(p.code)} · ${safe(p.title)}</span></div>
       <div class="tf-project-hero"><div><div class="tf-overline">${safe(p.clientName)} ${p.groupName?'/ '+safe(p.groupName):''}</div><div class="tf-project-title"><h1>${safe(p.title)}</h1>${statusPill(p.status)}</div><p>${safe(p.description||'Deliverables, people and progress in one shared project space.')}</p><div class="tf-hero-info"><span>◉ ${safe(p.ownerName||'No owner')}</span><span>▣ Due ${date(p.dueDate)}</span><span>◈ ${p.progress}% complete</span></div></div><div class="tf-hero-actions">${buttons}</div></div>
       <nav class="tf-tabs" aria-label="Project sections">${tabs.map(([key,label])=>`<button class="${ui.projectTab===key?'active':''}" onclick="TFPlus.switchProjectTab('${key}')">${label}</button>`).join('')}</nav>
       <div class="tf-project-body">${tabHtml()}</div>`;
   }
-  function switchProjectTab(key){ui.projectTab=key;ui.selected.clear();ui.page=1;render();try{history.replaceState(null,'','#projects/'+ui.project+'/'+key)}catch(_){}}
+  function switchProjectTab(key){if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(key))return;ui.projectTab=key;ui.selected.clear();ui.page=1;render();try{history.replaceState(null,'','#projects/'+ui.project+'/'+key)}catch(_){}}
   function projects(){return getProjectScope()?projectDetail():projectList()}
 
   const filterFields = [
@@ -181,7 +188,7 @@
   }
   function getFilteredTasks(projectId=''){
     const filters=Object.entries(ui.filters).filter(([k,v])=>v&&k!=='logic'&&k!=='search'&&v!=='all');
-    const q=stringValue(ui.filters.search);let rows=state.tasks.filter(t=>!projectId||t.projectId===projectId);
+    const q=stringValue(ui.filters.search);let rows=state.tasks.filter(t=>(!projectId||t.projectId===projectId)&&(!isEmployee()||isMyTask(t)));
     if(q)rows=rows.filter(t=>[t.title,t.description,t.code,t.clientName,t.projectName,t.assignedName,(t.tags||[]).join(' ')].some(v=>stringValue(v).includes(q)));
     if(filters.length)rows=rows.filter(t=>ui.filters.logic==='any'?filters.some(([k,v])=>fieldMatch(t,k,v)):filters.every(([k,v])=>fieldMatch(t,k,v)));
     const sorts={dueAt:t=>t.dueAt||'9999',title:t=>t.title.toLowerCase(),status:t=>t.status,owner:t=>t.assignedName.toLowerCase(),priority:t=>({low:1,normal:2,high:3,urgent:4})[t.priority]||0,percent:t=>Number(t.percentComplete)||0,created:t=>t.createdAt||''};
@@ -213,14 +220,11 @@
     return `<div class="tf-task-toolbar"><div class="tf-task-tools">
       <div class="tf-field-search"><span>⌕</span><input id="tfTaskSearch" aria-label="Search tasks" placeholder="Find task name, ID, project, owner…" value="${safe(ui.filters.search||'')}" oninput="TFPlus.changeFilter('search',this.value)"></div>
       <select aria-label="Task status" onchange="TFPlus.changeFilter('status',this.value)">${optionList([['open','All open'],['all','All tasks'],...TaskStatus],ui.filters.status||'','Any status')}</select>
-      ${button(`⚑ Filters${active?' ('+active+')':''}`,'TFPlus.openFilters()','filter')}
-      ${button('Reset filters','TFPlus.resetFilters()')}
-      ${button('☆ Save view','TFPlus.saveTaskView()')}
-      <select aria-label="Saved views" onchange="TFPlus.loadTaskView(this.value)">${optionList(saved.map(v=>[String(v.id),v.name]),'','Saved views…')}</select>
+      ${isManager()?`${button(`⚑ Filters${active?' ('+active+')':''}`,'TFPlus.openFilters()','filter')}${button('Reset filters','TFPlus.resetFilters()')}${button('☆ Save view','TFPlus.saveTaskView()')}<select aria-label="Saved views" onchange="TFPlus.loadTaskView(this.value)">${optionList(saved.map(v=>[String(v.id),v.name]),'','Saved views…')}</select>`:''}
     </div><div class="tf-task-tools">
-      <select aria-label="Group tasks" onchange="TFPlus.changeGroup(this.value)">${optionList([['none','No grouping'],['taskList','By task list'],['project','By project'],['status','By status'],['owner','By owner']],ui.groupBy,'Group by…')}</select>
+      ${isManager()?`<select aria-label="Group tasks" onchange="TFPlus.changeGroup(this.value)">${optionList([['none','No grouping'],['taskList','By task list'],['project','By project'],['status','By status'],['owner','By owner']],ui.groupBy,'Group by…')}</select>`:''}
       ${button('☷ List',"TFPlus.setView('list')",ui.view==='list'?'selected':'')}${button('▦ Board',"TFPlus.setView('board')",ui.view==='board'?'selected':'')}
-      ${isStaff()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):''}
+      ${isManager()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):''}
     </div></div>`;
   }
   function taskGrid(rows,projectId=''){
@@ -234,17 +238,17 @@
     let tr='';let previous='';
     for(const t of visible){const current=groupKey(t);if(group!=='none'&&current!==previous){previous=current;tr+=`<tr class="tf-group-row"><td colspan="11">⌄ <strong>${safe(current)}</strong> <small>${groups.get(current)?.length||0} tasks</small></td></tr>`;}
       const overdue=t.dueAt&&iso(t.dueAt)<today()&&t.status!=='completed';
-      tr+=`<tr class="tf-interactive" onclick="TFPlus.taskEditor('${t.id}')"><td class="tf-check-td" onclick="event.stopPropagation()"><input type="checkbox" aria-label="Select task ${safe(t.title)}" ${ui.selected.has(t.id)?'checked':''} onchange="TFPlus.toggleTask('${t.id}',this.checked)"></td>
+      tr+=`<tr class="tf-interactive" onclick="TFPlus.taskEditor('${t.id}')"><td class="tf-check-td" onclick="event.stopPropagation()">${isManager()?`<input type="checkbox" aria-label="Select task ${safe(t.title)}" ${ui.selected.has(t.id)?'checked':''} onchange="TFPlus.toggleTask('${t.id}',this.checked)">`:''}</td>
         <td><span class="tf-id">${safe(t.code)}</span></td><td class="tf-task-name"><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)}${t.parentId?' · Subtask':''}</small></td>
         <td>${safe(t.projectName||'—')}</td><td><span class="tf-owner"><i>${initials(teamName(t))}</i><span>${safe(teamName(t))}</span>${t.assigneeIds?.length?`<small>+${t.assigneeIds.length}</small>`:''}</span></td>
-        <td onclick="event.stopPropagation()">${isStaff()?`<select class="tf-status-select tf-${safe(t.status)}" aria-label="Task status" onchange="TFPlus.setTaskStatus('${t.id}',this.value)">${TaskStatus.map(([v,label])=>`<option value="${v}" ${v===t.status?'selected':''}>${label}</option>`).join('')}</select>`:statusPill(t.status)}</td>
+        <td onclick="event.stopPropagation()">${canChangeTask(t)?`<select class="tf-status-select tf-${safe(t.status)}" aria-label="Task status" onchange="TFPlus.setTaskStatus('${t.id}',this.value)">${TaskStatus.map(([v,label])=>`<option value="${v}" ${v===t.status?'selected':''}>${label}</option>`).join('')}</select>`:statusPill(t.status)}</td>
         <td>${(t.tags||[]).slice(0,2).map(tag=>`<span class="tf-tag">${safe(tag)}</span>`).join('')||'—'}</td>
         <td>${date(t.startAt)}</td><td class="${overdue?'tf-overdue':''}">${date(t.dueAt)}${overdue?'<small>Overdue</small>':''}</td>
         <td>${t.estimatedHours?`${t.estimatedHours}h`:'—'}</td><td>${statusPill(t.priority)}</td></tr>`;
     }
-    return `<section class="tf-pane tf-list-pane"><div class="tf-list-title"><span>Group by: <b>${safe(group==='taskList'?'Task List':group==='none'?'None':group)}</b> · ${fmtCount(all)} tasks</span>${isStaff()&&projectId?button('＋ Add task list',`TFPlus.taskListModal('${projectId}')`):''}</div>
-      ${ui.selected.size&&isStaff()?`<div class="tf-bulk-bar"><b>${ui.selected.size} selected</b>${button('Mark completed',"TFPlus.bulkStatus('completed')",'primary')}${button('In progress',"TFPlus.bulkStatus('in_progress')")}${button('Clear',"TFPlus.clearSelection()")}</div>`:''}
-      <div class="tf-table-scroll"><table class="tf-grid tf-task-table"><thead><tr><th class="tf-check-td"><input type="checkbox" aria-label="Select visible tasks" onchange="TFPlus.selectVisibleTasks(this.checked)"></th><th>ID</th><th>${head('title','Task name')}</th><th>Project</th><th>${head('owner','Owner')}</th><th>${head('status','Status')}</th><th>Tags</th><th>Start date</th><th>${head('dueAt','Due date')}</th><th>Duration</th><th>${head('priority','Priority')}</th></tr></thead><tbody>${tr||`<tr><td colspan="11">${empty('No tasks found','Change filters or create your first task.')}</td></tr>`}</tbody></table></div>
+    return `<section class="tf-pane tf-list-pane"><div class="tf-list-title"><span>Group by: <b>${safe(group==='taskList'?'Task List':group==='none'?'None':group)}</b> · ${fmtCount(all)} tasks</span>${isManager()&&projectId?button('＋ Add task list',`TFPlus.taskListModal('${projectId}')`):''}</div>
+      ${ui.selected.size&&isManager()?`<div class="tf-bulk-bar"><b>${ui.selected.size} selected</b>${button('Mark completed',"TFPlus.bulkStatus('completed')",'primary')}${button('In progress',"TFPlus.bulkStatus('in_progress')")}${button('Clear',"TFPlus.clearSelection()")}</div>`:''}
+      <div class="tf-table-scroll"><table class="tf-grid tf-task-table"><thead><tr><th class="tf-check-td">${isManager()?`<input type="checkbox" aria-label="Select visible tasks" onchange="TFPlus.selectVisibleTasks(this.checked)">`:''}</th><th>ID</th><th>${head('title','Task name')}</th><th>Project</th><th>${head('owner','Owner')}</th><th>${head('status','Status')}</th><th>Tags</th><th>Start date</th><th>${head('dueAt','Due date')}</th><th>Duration</th><th>${head('priority','Priority')}</th></tr></thead><tbody>${tr||`<tr><td colspan="11">${empty('No tasks found','Change filters or create your first task.')}</td></tr>`}</tbody></table></div>
       <div class="tf-footer-row"><span>${fmtCount(all)} tasks · ${size} per page</span><div>${button('‹ Previous',"TFPlus.pageTasks(-1)")}<span>Page ${ui.page} of ${count}</span>${button('Next ›',"TFPlus.pageTasks(1)")}</div></div></section>`;
   }
   function boardView(rows){
@@ -252,16 +256,17 @@
   }
   function taskWorkspace(projectId=''){
     const rows=getFilteredTasks(projectId);
-    return `${taskToolbar(projectId)}${ui.view==='board'?boardView(rows):taskGrid(rows,projectId)}${filterDrawer()}`;
+    return `${taskToolbar(projectId)}${ui.view==='board'?boardView(rows):taskGrid(rows,projectId)}${!isEmployee()?filterDrawer():''}`;
   }
-  function tasks(){return `${header('Tasks','Plan, group, assign, filter and deliver every work item.',`<a class="tf-btn" href="/api/project-export/tasks/">↓ Export tasks</a>`)}${taskWorkspace('')}`}
+  function tasks(){return `${header(isEmployee()?'My tasks':'Tasks',isEmployee()?'Your assigned tasks, deadlines, and progress. Select any row to open its details.':'Plan, group, assign, filter and deliver every work item.',isManager()?`<a class="tf-btn" href="/api/project-export/tasks/">↓ Export tasks</a>`:'')}${taskWorkspace('')}`}
 
   function taskEditor(id='',fixedProject=''){
     const t=state.tasks.find(x=>x.id===id)||{};
     if(id&&!t.id)return;
-    if(!isStaff()){
+    if(isEmployee()&&!id)return;
+    if(!isManager()){
       openModal(`<div class="tf-form-modal"><span class="tf-overline">TASK / ${safe(t.code)}</span><h2>${safe(t.title)}</h2><p>${safe(t.description||'No description')}</p>
-        <div class="tf-readonly"><div>Status ${statusPill(t.status)}</div><div>Priority ${statusPill(t.priority)}</div><div>Owner <b>${safe(teamName(t))}</b></div><div>Due <b>${date(t.dueAt)}</b></div></div>${button('Close','closeModal()','primary')}</div>`);
+        <div class="tf-readonly"><div>Status ${statusPill(t.status)}</div><div>Priority ${statusPill(t.priority)}</div><div>Owner <b>${safe(teamName(t))}</b></div><div>Project <b>${safe(t.projectName||t.clientName)}</b></div><div>Due <b>${date(t.dueAt)}</b></div></div><div class="tf-task-detail-actions">${isEmployee()&&canChangeTask(t)?`${t.status!=='in_progress'?button('Start work',`closeModal();TFPlus.setTaskStatus('${t.id}','in_progress')`,'primary'):''}${t.status!=='completed'?button('Mark completed',`closeModal();TFPlus.setTaskStatus('${t.id}','completed')`,'primary'):''}`:''}${button('Close','closeModal()')}</div></div>`);
       return;
     }
     const p=projectBy(fixedProject||t.projectId);
@@ -309,17 +314,21 @@
     }
   }
   function taskListModal(projectId){
+    if(!isManager())return;
     formModal('Create task list','Group related tasks into delivery stages or content batches.',
       '<label>Task list name<input name="title" required maxlength="120" placeholder="e.g. Social media posts"></label>',
       async (f,fd)=>plusPost({action:'save_task_list',projectId,title:fd.get('title')}),'Create task list');
   }
   async function setTaskStatus(id,status){
+    const task=state.tasks.find(t=>t.id===id);if(!task||!canChangeTask(task))return;
     try{await post({action:'task_status',id,status})}catch(ex){alert(ex.message);render()}
   }
   async function bulkStatus(status){
+    if(!isManager())return;
     try{await plusPost({action:'bulk_task_status',taskIds:[...ui.selected],status});ui.selected.clear()}catch(ex){alert(ex.message)}
   }
   function saveTaskView(){
+    if(!isManager())return;
     formModal('Save filtered task view','Save these exact filter criteria to your account so you can reuse them.',
       '<label>View name<input name="name" required maxlength="80" placeholder="e.g. High priority tasks due this week"></label>',
       async(f,fd)=>opsPost({action:'save_view',name:String(fd.get('name')||''),filters:{...ui.filters,view:ui.view,groupBy:ui.groupBy}}),'Save view');
@@ -347,26 +356,69 @@
   }
 
   function widgetList(scope){
+    if(isEmployee())return scope==='global'?['stats','today','overdue']:['stats','today','progress'];
     const saved=arr('dashboardLayouts').find(x=>x.scope===scope)?.widgets;
     return saved?.length?saved:(scope==='global'?arr('defaultWidgets').global:arr('defaultWidgets').project)||
       (scope==='global'?['stats','today','overdue','projects','activity']:['stats','task_chart','overdue','issues','progress']);
   }
   const widgetNames={stats:'Key metrics',today:'Today’s tasks',overdue:'Overdue work items',task_chart:'Task status',team:'Team status',issues:'Issues',progress:'Project progress',activity:'Recent activity',approvals:'Approvals',timesheets:'Tracked time',projects:'Active projects',shortcuts:'Quick modules',calendar:'Upcoming calendar',updates:'Client updates'};
+  // The home task register is always visible, even when dashboard widgets are customized.
+  // Employee rows are limited to tasks explicitly assigned to that employee.
+  function homeTasks(){
+    const allowed=state.tasks.filter(t=>!isEmployee()||isMyTask(t));
+    const query=String(ui.homeTaskQuery||'').toLowerCase().trim();
+    const statuses=[['all','All statuses'],['open','Open'],['in_progress','In progress'],['review','In review'],['blocked','Blocked'],['completed','Completed'],['overdue','Overdue']];
+    const list=allowed.filter(t=>{
+      if(query&&![t.title,t.description,t.code,t.projectName,t.clientName,t.assignedName].some(v=>String(v||'').toLowerCase().includes(query)))return false;
+      if(ui.homeTaskStatus==='all')return true;
+      if(ui.homeTaskStatus==='overdue')return t.status!=='completed'&&!!iso(t.dueAt)&&iso(t.dueAt)<today();
+      if(ui.homeTaskStatus==='open')return t.status!=='completed';
+      return t.status===ui.homeTaskStatus;
+    }).sort((a,b)=>Number(a.status==='completed')-Number(b.status==='completed') || (a.dueAt||'9999').localeCompare(b.dueAt||'9999') || a.title.localeCompare(b.title));
+    const visible=list.slice(0,ui.homeTaskLimit);
+    const rows=visible.map(t=>{
+      const overdue=t.status!=='completed'&&!!iso(t.dueAt)&&iso(t.dueAt)<today();
+      return `<button type="button" class="tf-home-task-row" aria-label="Open task ${safe(t.title)}" onclick="TFPlus.taskEditor('${t.id}')">
+        <span class="tf-home-task-main"><span class="tf-home-task-name">${safe(t.title)}</span><small>${safe(t.projectName||t.clientName)} · ${safe(t.code||'Task')}</small></span>
+        <span class="tf-home-task-owner">${safe(teamName(t))}</span>
+        <span class="tf-home-task-priority">${statusPill(t.priority)}</span>
+        <span class="tf-home-task-status">${statusPill(t.status)}</span>
+        <time class="${overdue?'tf-overdue':''}">${date(t.dueAt)}</time><span class="tf-home-task-open" aria-hidden="true">↗</span></button>`;
+    }).join('');
+    return `<section class="tf-home-tasks tf-pane" aria-label="All tasks" id="tfHomeTasks">
+      <header class="tf-home-tasks-head"><div><span class="tf-overline">MY WORKSPACE / TASK REGISTER</span><h2>${isEmployee()?'My assigned tasks':'All tasks'} <span>${fmtCount(list.length)}</span></h2><p>Every ${isEmployee()?'assigned':'accessible'} task in one place. Select a row to view details${isEmployee()?' or update its status':''}.</p></div><button type="button" class="tf-btn" onclick="TFPlus.viewTasks()">View task workspace ↗</button></header>
+      <div class="tf-home-tasks-controls"><label class="tf-field-search"><span>⌕</span><input id="tfHomeTaskSearch" type="search" autocomplete="off" aria-label="Search home tasks" placeholder="Search tasks or projects…" value="${safe(ui.homeTaskQuery)}" oninput="TFPlus.homeTaskFilter('query',this.value)"></label><select aria-label="Filter home tasks by status" onchange="TFPlus.homeTaskFilter('status',this.value)">${statuses.map(([v,label])=>`<option value="${v}" ${ui.homeTaskStatus===v?'selected':''}>${label}</option>`).join('')}</select></div>
+      <div class="tf-home-tasks-table"><div class="tf-home-tasks-thead"><span>Task / Project</span><span>Owner</span><span>Priority</span><span>Status</span><span>Due</span><span></span></div>${rows||empty('No matching tasks',allowed.length?'Try a different search or status filter.':'Assigned tasks will appear here as soon as work is allocated.')}</div>
+      <footer class="tf-home-tasks-footer"><span>Showing ${fmtCount(visible.length)} of ${fmtCount(list.length)} tasks</span>${list.length>visible.length?button('Show more tasks', 'TFPlus.moreHomeTasks()',''):''}</footer>
+    </section>`;
+  }
+  function homeTaskFilter(kind,value){
+    if(kind==='query')ui.homeTaskQuery=value;
+    else if(kind==='status')ui.homeTaskStatus=value;
+    else return;
+    ui.homeTaskLimit=15;
+    render();
+    if(kind==='query'){
+      const input=document.getElementById('tfHomeTaskSearch');
+      if(input){input.focus();input.setSelectionRange(value.length,value.length)}
+    }
+  }
+  function moreHomeTasks(){ui.homeTaskLimit+=15;render();}
   function dashboard(scope='global',project=null){
     const selected=widgetList(scope),global=scope==='global';
-    const tasksFor=project?projectTasks(project.id):state.tasks;
+    const tasksFor=(project?projectTasks(project.id):state.tasks).filter(t=>!isEmployee()||isMyTask(t));
     const rows=tasksFor.filter(t=>t.status!=='completed'),done=tasksFor.filter(t=>t.status==='completed');
     const overdue=rows.filter(t=>iso(t.dueAt)&&iso(t.dueAt)<today());
     const issues=project?projectIssues(project.id):arr('projectIssues');
     const time=project?arr('timeEntries').filter(t=>t.projectId===project.id):arr('timeEntries');
     const approvals=project?arr('approvalRequests').filter(a=>a.projectId===project.id):arr('approvalRequests');
     const current=project?project.title:'Home';
-    const actions=`${button('＋ Add widget',`TFPlus.configureWidgets('${scope}')`)}${button('↻ Refresh',"load()")}`;
-    const title=global?header('Home dashboard','Your live operational snapshot, with customizable widgets and shortcuts.',actions):
+    const actions=`${isManager()?button('＋ Add widget',`TFPlus.configureWidgets('${scope}')`):''}${button('↻ Refresh',"load()")}`;
+    const title=global?header('Home dashboard',isEmployee()?'Your assigned work, deadlines, and daily progress in one place.':'Your live operational snapshot, with customizable widgets and shortcuts.',actions):
       `<div class="tf-dashboard-header"><div><strong>Project dashboard</strong><small>Widgets reflect work for ${safe(current)}</small></div><div>${actions}</div></div>`;
-    return `${title}<div class="tf-widgets">${selected.map((key,index)=>{
+    return `${title}${global?homeTasks():''}<div class="tf-widgets">${selected.map((key,index)=>{
       const content=renderWidget(key,project,{rows,tasksFor,done,overdue,issues,time,approvals});
-      return `<section class="tf-widget tf-widget-${key}"><div class="tf-widget-header"><strong>${safe(widgetNames[key]||key)}</strong><div class="tf-widget-controls"><button title="Move widget left" onclick="TFPlus.moveWidget('${scope}',${index},-1)">←</button><button title="Move widget right" onclick="TFPlus.moveWidget('${scope}',${index},1)">→</button><button title="Customize dashboard" onclick="TFPlus.configureWidgets('${scope}')">⋯</button></div></div>${content}</section>`;
+      return `<section class="tf-widget tf-widget-${key}"><div class="tf-widget-header"><strong>${safe(widgetNames[key]||key)}</strong>${isManager()?`<div class="tf-widget-controls"><button title="Move widget left" onclick="TFPlus.moveWidget('${scope}',${index},-1)">←</button><button title="Move widget right" onclick="TFPlus.moveWidget('${scope}',${index},1)">→</button><button title="Customize dashboard" onclick="TFPlus.configureWidgets('${scope}')">⋯</button></div>`:''}</div>${content}</section>`;
     }).join('')}</div>`;
   }
   const taskCompact=(tasks,limit=7)=>tasks.slice(0,limit).map(t=>`<button class="tf-compact-row" onclick="TFPlus.taskEditor('${t.id}')"><span class="tf-mini-check">☑</span><span><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)} · ${safe(teamName(t))}</small></span><time class="${iso(t.dueAt)<today()&&t.status!=='completed'?'tf-overdue':''}">${date(t.dueAt||t.startAt)}</time></button>`).join('')||empty('Nothing pending','There is no work in this category.');
@@ -376,7 +428,10 @@
     const openIssues=issues.filter(i=>!['resolved','closed'].includes(i.status));
     const activeProjects=project?[project]:state.projects.filter(p=>p.status==='active');
     if(key==='stats'){
-      const metrics=project?[
+      const metrics=isEmployee()?project?[
+        ['My open tasks',rows.length,'Assigned in this project'],['Completed',done.length,'My finished tasks'],['Project progress',`${stats.percent}%`,'My task completion']]:[
+        ['My open tasks',rows.length,'Awaiting completion'],['Completed',done.length,'My finished tasks'],
+        ['Due today',rows.filter(t=>iso(t.dueAt)===today()).length,'My deadlines today'],['Overdue',rows.filter(t=>iso(t.dueAt)&&iso(t.dueAt)<today()).length,'My overdue tasks']]:project?[
         ['Open tasks',rows.length,'Tasks in progress'],['Completed',done.length,'Finished work'],['Project progress',`${stats.percent}%`,'Completion rate'],
         ['Active issues',openIssues.length,'Need attention'],['Phases',arr('milestones').filter(m=>m.projectId===project.id).length,'Delivery stages'],['Hours logged',hours(minutes(time)),'Recorded delivery']]:
         [['Open tasks',rows.length,'Across visible clients'],['Active projects',activeProjects.length,'Delivery in progress'],['Completed tasks',done.length,'Finished work'],
@@ -416,6 +471,7 @@
     return empty('Widget unavailable');
   }
   function configureWidgets(scope){
+    if(!isManager())return;
     const selected=new Set(widgetList(scope));
     formModal('Customize dashboard','Choose the modules that matter most. Your widget choices are stored in your account.',
       `<div class="tf-widget-picker">${Object.entries(widgetNames).filter(([key])=>state.ctx.role!=='client'||!['team','timesheets'].includes(key)).map(([key,name])=>`<label><input type="checkbox" name="widgets" value="${key}" ${selected.has(key)?'checked':''}><span>${safe(name)}</span></label>`).join('')}</div>`,
@@ -425,6 +481,7 @@
       },'Apply dashboard');
   }
   async function moveWidget(scope,index,by){
+    if(!isManager())return;
     const layout=[...widgetList(scope)],next=index+by;if(next<0||next>=layout.length)return;
     [layout[index],layout[next]]=[layout[next],layout[index]];
     try{await plusPost({action:'save_dashboard_layout',scope,widgets:layout})}catch(ex){alert(ex.message)}
@@ -619,14 +676,14 @@
     selectVisibleTasks(checked){const rows=getFilteredTasks(getProjectScope());const groups=new Map();const key=t=>ui.groupBy==='taskList'?(arr('taskLists').find(x=>x.id===t.taskListId)?.title||'General'):ui.groupBy==='project'?(t.projectName||'No project'):ui.groupBy==='status'?titleStatus(t.status):ui.groupBy==='owner'?teamName(t):'All tasks';for(const t of rows){const k=key(t);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t)}for(const t of [...groups.values()].flat().slice((ui.page-1)*25,ui.page*25)){if(checked)ui.selected.add(t.id);else ui.selected.delete(t.id)}render()},
     clearSelection(){ui.selected.clear();render()},bulkStatus,taskEditor,taskListModal,setTaskStatus,
     changeFilter,resetFilters,openFilters(){ui.drawer=true;render()},closeFilters(){ui.drawer=false;render()},applyFilters,
-    saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,teamModal,removeTeamMember,
+    saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,homeTaskFilter,moreHomeTasks,teamModal,removeTeamMember,
     phaseModal,phaseStatus,issueModal,issueStatus,setIssueFilter(v){ui.issuesStatus=v;render()},
     feedModal,documentModal,logTimeModal,timeStatus,approvalModal,decideApproval,
-    viewTasks(projectId=''){ui.project=projectId;ui.projectTab='tasks';state.tab=projectId?'projects':'tasks';ui.page=1;render()}
+    viewTasks(projectId=''){ui.project=projectId;ui.projectTab='tasks';state.tab=projectId?'projects':'tasks';ui.page=1;if(isEmployee())ui.filters.status='all';render()}
   };
   window.TFPlus=publicAPI;
   Object.assign(labels,{issues:'Issues',phases:'Phases',collaboration:'Collaboration',files:'Documents & assets',projects:'Projects',tasks:'Tasks'});
-  for(const role of ['employee','manager','admin']){
+  for(const role of ['manager','admin']){
     for(const key of ['issues','phases','collaboration'])if(!menus[role].includes(key))menus[role].push(key);
   }
   // Reuse the existing route and role-based shell instead of creating a second SPA.

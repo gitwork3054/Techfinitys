@@ -35,7 +35,7 @@ async function load(){
   finally{state.loading=false;render()}
 }
 
-function go(t){state.tab=t;render()}
+function go(t){if(state.ctx && !(menus[state.ctx.role]||[]).includes(t))return;state.tab=t;render()}
 function shell(){if(!state.ctx)return;$('#crumbTitle').textContent=labels[state.tab]||state.tab;$('#rolePill').textContent=roleName();$('#topAvatar').textContent=initials(state.ctx.name);$('#workspaceCard').innerHTML=`<span class="avatar">${initials(state.ctx.name)}</span><div><strong>${esc(state.ctx.name)}</strong><small>${esc(roleName())}</small></div>`;$('#nav').innerHTML=(menus[state.ctx.role]||[]).map(k=>`<button class="${state.tab===k?'active':''}" data-tab="${k}"><span>${icon(k)}</span>${labels[k]}${k==='updates'&&state.updates.length?`<em>${state.updates.length}</em>`:''}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.tab))}
 function icon(k){return ({overview:'▦',clients:'♟',team:'♜',assignments:'⇄',projects:'◇',tasks:'☑',updates:'↻',calendar:'▣',notes:'≣',content:'◫',files:'▰',tickets:'▱',packages:'◇',deliverables:'☑',campaigns:'▥',shoots:'◉',workflows:'⌘',invoices:'▤',reports:'▥',audit:'⌘',settings:'⚙'})[k]||'•'}
 function heading(sub='Keep every client, owner and next step clear.'){return `<div class="heading"><div><div class="eyebrow">TECHFINITYS / ${esc(roleName().toUpperCase())}</div><h1>${esc(labels[state.tab]||'CRM')}</h1><p>${esc(sub)}</p></div></div>`}
@@ -183,7 +183,7 @@ $('#bellBtn').onclick=()=>go('updates');window.go=go;window.state=state;window.r
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape' && document.querySelector('.overlay')) closeModal();
     // Alt + T opens a new task from anywhere employees/managers/admins can create one.
-    if(e.altKey && e.key.toLowerCase()==='t' && state.ctx && state.ctx.role!=='client'){
+    if(e.altKey && e.key.toLowerCase()==='t' && state.ctx && ['admin','manager'].includes(state.ctx.role)){
       e.preventDefault();
       taskModal();
     }

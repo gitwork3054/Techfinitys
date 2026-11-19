@@ -339,3 +339,13 @@ The server enforces admin-only read and mark-read access for `/api/admin-activit
 Regression tests: `python manage.py test workspace.test_admin_activity workspace.test_billing -v 1`. Browser/JavaScript smoke: `node qa/node_activity_smoke.js`.
 
 **Production readiness:** The Render Free demo currently uses ephemeral SQLite. Employee events, approvals, and notifications can disappear across restarts or deploys. Use a durable PostgreSQL database, backups, a configured log-retention policy, and proper role offboarding before collecting actual employee records. In-app polling is active; email/push notifications are not configured. Follow applicable workplace privacy and employee-notice requirements when enabling centralized monitoring.
+
+## Employee navigation & All Tasks home panel (November 2026)
+
+Employee accounts have a focused navigation: **Home, My Tasks, Projects, Attendance, Time Tracking, Leave, Calendar, Updates and Documents.** WorkChat and the profile-photo editor remain available from the chat dock and avatar. Employees do not see CRM-wide sales, billing, team administration, reports, audit, widget editing, bulk task assignment or other management controls. Office Managers and Super Admins retain their existing management tools; clients keep their client portal.
+
+The **All Tasks** register is always visible at the top of the home dashboard, independently of saved dashboard widgets. Super Admins/managers see tasks from their authorized workspaces, while employees see tasks **assigned to them** (primary owner or collaborator). Employees can click any listed task to inspect details and, for assigned tasks, update its status, without seeing assignment or billing fields. The home list includes open and completed work, search, status filters, due dates and a progressive **Show more** control, as well as a link to the full task workspace. Project tabs are simplified for employees.
+
+The backend remains the authority for client isolation and task updates: hiding a menu item does not replace API access checks. JavaScript regression check: `node qa/node_employee_roles_smoke.js` (no packages required); it covers focused navigation, assigned-task filtering, click-through task details, client-side route restrictions, and retained Super Admin controls.
+
+The application continues using temporary SQLite and local uploads on Render Free. Do not enter real employee or client data until persistent PostgreSQL and durable media storage are configured.

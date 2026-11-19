@@ -29,13 +29,17 @@
     timelogs:'Legacy time records',overview:'Command center',reports:'Insights & reports'
   });
   menus.client = ['overview','projects','milestones','tasks','updates','approvals','tickets','calendar','content','deliverables','files','invoices','notes','settings'];
-  menus.employee = ['overview','tasks','projects','milestones','attendance','timesheets','leaves','approvals','clients','updates','calendar','tickets','files','notes','issues','collaboration','settings'];
+  // Employee navigation: keep only daily work; management is reserved for managers and admins.
+  menus.employee = ['overview','tasks','projects','attendance','timesheets','leaves','calendar','updates','files'];
   menus.manager = ['overview','leads','clients','team','assignments','projects','milestones','tasks','attendance','timesheets','leaves','approvals','tickets','updates','calendar','deliverables','content','campaigns','shoots','files','invoices','reports','audit','workflows','settings'];
   menus.admin = [...menus.manager];
   const coreShell = shell;
   shell = function(){
     coreShell();
     const role = state.ctx?.role;
+    document.body.dataset.crmRole = role || '';
+    const quickTop=document.getElementById('quickBtn');
+    if(quickTop && role==='employee') quickTop.textContent='＋ Quick actions';
     const roleNav = document.getElementById('nav');
     if (roleNav) {
       const category = k => ['overview','leads','clients','team','assignments'].includes(k)?'ORGANIZE':
@@ -43,7 +47,7 @@
          ['attendance','timesheets','leaves'].includes(k)?'PEOPLE & TIME':
          ['approvals','tickets','files','invoices','collaboration','issues'].includes(k)?'CLIENT SERVICE':'CONTROL';
       const groups={}; for(const key of menus[role]||[]) (groups[category(key)]||=([])).push(key);
-      roleNav.innerHTML=Object.entries(groups).map(([group,keys])=>`<div class="os-nav-group"><span>${group}</span>${keys.map(k=>`<button type="button" data-tab="${k}" class="${state.tab===k?'active':''}" title="${esc(labels[k]||k)}"><span class="nav-icon">${icon(k)}</span><span>${esc(labels[k]||k)}</span>${k==='approvals'&&items('approvalRequests').some(a=>a.status==='pending')?'<em>•</em>':''}</button>`).join('')}</div>`).join('');
+      roleNav.innerHTML=Object.entries(groups).map(([group,keys])=>`<div class="os-nav-group"><span>${group}</span>${keys.map(k=>`<button type="button" data-tab="${k}" class="${state.tab===k?'active':''}" title="${esc(labels[k]||k)}"><span class="nav-icon">${icon(k)}</span><span>${esc(role==='employee'&&k==='tasks'?'My tasks':labels[k]||k)}</span>${k==='approvals'&&items('approvalRequests').some(a=>a.status==='pending')?'<em>•</em>':''}</button>`).join('')}</div>`).join('');
       roleNav.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.tab);document.querySelector('.sidebar')?.classList.remove('mobile-open')}));
     }
     const dateEl=document.getElementById('todayTop'); if(dateEl) dateEl.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
@@ -248,7 +252,7 @@
     ...(manager()?state.members.filter(m=>m.role!=='client').map(m=>({title:m.name,detail:m.roleLabel+' · Team',tab:'team'})):[])
   ];
   function palette(){modal('Search workspace','Quickly find clients, projects, tasks, tickets and people you can access.',`<input id="paletteSearch" class="os-palette-search" autocomplete="off" placeholder="Type to search... (or press Ctrl + K)"><div id="paletteResults" class="os-palette-results"></div>`);const input=document.getElementById('paletteSearch');input.oninput=()=>{const q=input.value.toLowerCase().trim();const rows=searchData().filter(x=>!q||`${x.title} ${x.detail}`.toLowerCase().includes(q)).slice(0,14);document.getElementById('paletteResults').innerHTML=rows.map(x=>`<button onclick="closeModal();go('${x.tab}')"><span>⌕</span><strong>${esc(x.title)}</strong><small>${esc(x.detail)}</small><em>↵</em></button>`).join('')||empty('No matches','Try a different search term.')};input.oninput();input.focus()}
-  function quickCreate(){const opts=state.ctx.role==='client'?[['Support ticket','ticketModal()','✉'],['Client update','updateModal()','↻']]:[['Task','taskModal()','☑'],['Log hours','timeModal()','◷'],['Milestone','milestoneModal()','◈'],['Approval','approvalModal()','◎'],['Support ticket','ticketModal()','✉'],...(manager()?[['Sales lead','leadModal()','◇'],['Client','clientModal()','♟'],['Employee','memberModal()','♜']]:[])];modal('Quick create','Create a record without leaving your workspace.',`<div class="os-create-grid">${opts.map(x=>`<button onclick="closeModal();${x[1]}"><span>${x[2]}</span>${x[0]} <b>＋</b></button>`).join('')}</div>`)}
+  function quickCreate(){const opts=state.ctx.role==='client'?[['Support ticket','ticketModal()','✉'],['Client update','updateModal()','↻']]:state.ctx.role==='employee'?[['Log work hours','timeModal()','◷'],['Request leave','leaveModal()','◉'],['Post project update','updateModal()','↻']]:[['Task','taskModal()','☑'],['Log hours','timeModal()','◷'],['Milestone','milestoneModal()','◈'],['Approval','approvalModal()','◎'],['Support ticket','ticketModal()','✉'],...(manager()?[['Sales lead','leadModal()','◇'],['Client','clientModal()','♟'],['Employee','memberModal()','♜']]:[])];modal('Quick create','Create a record without leaving your workspace.',`<div class="os-create-grid">${opts.map(x=>`<button onclick="closeModal();${x[1]}"><span>${x[2]}</span>${x[0]} <b>＋</b></button>`).join('')}</div>`)}
   // Bind all actions referenced by inline event handlers (all data is escaped).
   Object.assign(window,{execute,opsUI,leaveModal,decideLeave,timeModal,approvalModal,decideApproval,
     ticketModal,ticketThread,milestoneModal,leadModal,saveCurrentView,applySavedView,
@@ -258,7 +262,7 @@
   const quick=document.getElementById('quickBtn');if(quick)quick.onclick=quickCreate;
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();palette()}});
   const oldGo=go;
-  go=function(key){oldGo(key);try{history.replaceState(null,'','#'+key)}catch{}};
+  go=function(key){if(state.ctx&&!(menus[state.ctx.role]||[]).includes(key))return;oldGo(key);try{history.replaceState(null,'','#'+key)}catch{}};
   window.go=go;window.render=render;window.taskModal=taskModal;window.clientModal=clientModal;
   if(location.hash){const tab=location.hash.slice(1);if((menus[state.ctx?.role]||[]).includes(tab))state.tab=tab;}
   if(!state.loading&&!state.error)render();
