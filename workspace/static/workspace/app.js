@@ -35,8 +35,28 @@ async function load(){
   finally{state.loading=false;render()}
 }
 
+// Employee-only full workspace refresh. Preserves the current page and
+// re-fetches the same permission-scoped APIs used at sign-in.
+let tfEmployeeRefreshBusy=false;
+async function refreshEmployeeWorkspace(){
+  const btn=document.getElementById('tfEmployeeRefresh');
+  if(state.ctx?.role!=='employee'||tfEmployeeRefreshBusy)return;
+  tfEmployeeRefreshBusy=true;
+  if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');}
+  try{
+    await load();
+    if(state.error)throw Error(state.error);
+    if(window.TFCollab && typeof window.TFCollab.refresh==='function')await window.TFCollab.refresh();
+    if(btn){btn.title='Workspace updated';}
+  }catch(err){state.notice='Could not refresh your workspace. Please try again.';render();}
+  finally{
+    tfEmployeeRefreshBusy=false;
+    if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');}
+  }
+}
+document.getElementById('tfEmployeeRefresh')?.addEventListener('click',refreshEmployeeWorkspace);
 function go(t){if(state.ctx && !(menus[state.ctx.role]||[]).includes(t))return;state.tab=t;render()}
-function shell(){if(!state.ctx)return;$('#crumbTitle').textContent=labels[state.tab]||state.tab;$('#rolePill').textContent=roleName();$('#topAvatar').textContent=initials(state.ctx.name);$('#workspaceCard').innerHTML=`<span class="avatar">${initials(state.ctx.name)}</span><div><strong>${esc(state.ctx.name)}</strong><small>${esc(roleName())}</small></div>`;$('#nav').innerHTML=(menus[state.ctx.role]||[]).map(k=>`<button class="${state.tab===k?'active':''}" data-tab="${k}"><span>${icon(k)}</span>${labels[k]}${k==='updates'&&state.updates.length?`<em>${state.updates.length}</em>`:''}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.tab))}
+function shell(){if(!state.ctx)return;const refreshButton=document.getElementById('tfEmployeeRefresh');if(refreshButton)refreshButton.hidden=state.ctx.role!=='employee';$('#crumbTitle').textContent=labels[state.tab]||state.tab;$('#rolePill').textContent=roleName();$('#topAvatar').textContent=initials(state.ctx.name);$('#workspaceCard').innerHTML=`<span class="avatar">${initials(state.ctx.name)}</span><div><strong>${esc(state.ctx.name)}</strong><small>${esc(roleName())}</small></div>`;$('#nav').innerHTML=(menus[state.ctx.role]||[]).map(k=>`<button class="${state.tab===k?'active':''}" data-tab="${k}"><span>${icon(k)}</span>${labels[k]}${k==='updates'&&state.updates.length?`<em>${state.updates.length}</em>`:''}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.tab))}
 function icon(k){return ({overview:'▦',clients:'♟',team:'♜',assignments:'⇄',projects:'◇',tasks:'☑',updates:'↻',calendar:'▣',notes:'≣',content:'◫',files:'▰',tickets:'▱',packages:'◇',deliverables:'☑',campaigns:'▥',shoots:'◉',workflows:'⌘',invoices:'▤',reports:'▥',audit:'⌘',settings:'⚙'})[k]||'•'}
 function heading(sub='Keep every client, owner and next step clear.'){return `<div class="heading"><div><div class="eyebrow">TECHFINITYS / ${esc(roleName().toUpperCase())}</div><h1>${esc(labels[state.tab]||'CRM')}</h1><p>${esc(sub)}</p></div></div>`}
 function stat(title,value,sub){return `<div class="stat"><span>${esc(title)}</span><div>${esc(value)}</div><small>${esc(sub)}</small></div>`}
