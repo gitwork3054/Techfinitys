@@ -3,6 +3,7 @@ widget layouts and bulk updates. Every database operation is tenant scoped.
 """
 import csv
 import json
+from datetime import datetime, time
 from pathlib import Path
 from uuid import UUID
 from django.core.exceptions import ValidationError
@@ -10,7 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_http_methods
 from .models import (
     Project, Task, Member, ClientAssignment, ProjectTaskList, ProjectTeam,
@@ -199,6 +200,55 @@ def projects_plus_api(request):
             raise ValueError('JSON object required')
         action = payload.get('action')
         with transaction.atomic():
+            if action == 'quick_create_task':
+                # Quick entry is intentionally restricted to the same roles that
+                # can access the full task creation form.
+                if member.role not in MANAGERS:
+                    raise PermissionError('Only managers can create tasks')
+                project = _project(member, payload.get('projectId'))
+                title = _short(payload.get('title'), 220, 'Task name')
+                list_id = payload.get('taskListId') or None
+                task_list = None
+                if list_id:
+                    task_list = ProjectTaskList.objects.filter(pk=list_id, project=project).first()
+                    if not task_list:
+                        raise ValueError('Task list must belong to the selected project')
+                task = Task.objects.create(
+                    client=project.client, project=project, task_list=task_list,
+                    title=title, status='todo', priority='normal',
+                    created_by=member, client_visible=False,
+                )
+                _recalculate_project(project.pk)
+                _log(member, 'Created task', task, project.client, title)
+                return JsonResponse({'ok': True, 'id': str(task.pk)}, status=201)
+
+            if action == 'set_task_date':
+                if member.role not in MANAGERS:
+                    raise PermissionError('Only managers can reschedule tasks')
+                task = _task(member, payload.get('taskId'))
+                field = _choice(payload.get('field'), {'startAt', 'dueAt'}, 'date field')
+                raw = payload.get('date', '')
+                if not isinstance(raw, str) or len(raw) > 10:
+                    raise ValueError('Choose a valid calendar date')
+                day = parse_date(raw) if raw else None
+                if raw and day is None:
+                    raise ValueError('Choose a valid calendar date')
+                attr = 'start_at' if field == 'startAt' else 'due_at'
+                existing = getattr(task, attr)
+                local_time = timezone.localtime(existing).time().replace(tzinfo=None) if existing else time(hour=9)
+                new_value = timezone.make_aware(
+                    datetime.combine(day, local_time), timezone.get_current_timezone()
+                ) if day else None
+                start = new_value if attr == 'start_at' else task.start_at
+                due = new_value if attr == 'due_at' else task.due_at
+                if start and due and start > due:
+                    raise ValueError('Due date cannot be before start date')
+                setattr(task, attr, new_value)
+                task.save(update_fields=[attr, 'updated_at'])
+                _log(member, 'Updated task dates', task, task.client,
+                     f'{task.title} - {field}: {day.isoformat() if day else "cleared"}')
+                return JsonResponse({'ok': True, 'date': day.isoformat() if day else ''})
+
             if action == 'save_project_meta':
                 _staff(member)
                 p = _project(member, payload.get('projectId'))

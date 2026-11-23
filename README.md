@@ -349,3 +349,9 @@ The **All Tasks** register is always visible at the top of the home dashboard, i
 The backend remains the authority for client isolation and task updates: hiding a menu item does not replace API access checks. JavaScript regression check: `node qa/node_employee_roles_smoke.js` (no packages required); it covers focused navigation, assigned-task filtering, click-through task details, client-side route restrictions, and retained Super Admin controls.
 
 The application continues using temporary SQLite and local uploads on Render Free. Do not enter real employee or client data until persistent PostgreSQL and durable media storage are configured.
+
+### Inline task entry and date editing (project Task List)
+
+Office Managers and Super Admins can open **Projects > a project > Tasks > List** and type directly into the **Add task…** row underneath each task group. **Enter** (or **Add ↵**) saves an internal draft task in that project/task list; **Escape** clears the draft. The server generates the task ID, keeps client visibility off until a manager deliberately publishes it, and records an audit entry. Employees cannot create tasks through this interface, preserving the restricted employee workspace.
+
+Click a task's **Start date** or **Due date** cell to open the browser's native date picker. Picking a date saves only that field, with server validation ensuring the due date cannot precede the start date. Clearing a date is supported. Users can still use the detailed task editor for descriptions, ownership, priority, and other settings.

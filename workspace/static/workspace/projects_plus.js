@@ -9,7 +9,7 @@
     drawer: false, selected: new Set(), collapsed: new Set(),
     filters: { status: 'open', search: '', logic: 'all' },
     homeTaskQuery: '', homeTaskStatus: 'all', homeTaskLimit: 15,
-    issuesStatus: 'open', feedProject: '', taskProject: '',
+    issuesStatus: 'open', feedProject: '', taskProject: '', quickBusy: false,
   };
   const isStaff = () => state.ctx?.role !== 'client';
   const isManager = () => ['admin', 'manager'].includes(state.ctx?.role);
@@ -227,6 +227,63 @@
       ${isManager()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):''}
     </div></div>`;
   }
+  // Draft entry lives *inside* the task table. Save on Enter or with the Add button;
+  // leaving the field does not unexpectedly create a client-visible task.
+  function quickTaskRow(projectId,taskListId='',listName='General'){
+    return `<tr class="tf-quick-task-row"><td></td><td class="tf-quick-plus">＋</td>
+      <td class="tf-quick-title"><div class="tf-quick-wrap">
+        <input class="tf-quick-input" data-project-id="${safe(projectId)}" data-list-id="${safe(taskListId)}"
+          type="text" maxlength="220" autocomplete="off" aria-label="Add task to ${safe(listName||'General')}"
+          placeholder="Add task…" onkeydown="TFPlus.quickTaskKey(event,this)">
+        <button type="button" class="tf-quick-save" onclick="TFPlus.quickTaskButton(this)" title="Save task" aria-label="Save new task">Add ↵</button>
+      </div></td><td colspan="8"><span class="tf-quick-hint">${safe(listName||'General')} · Enter to add · Esc to clear</span></td></tr>`;
+  }
+  function taskDateControl(t,field){
+    if(!isManager())return date(t[field]);
+    const label=field==='startAt'?'start':'due';
+    const value=iso(t[field]);
+    return `<span class="tf-date-editor"><button type="button" class="tf-date-trigger" aria-label="Edit ${label} date for ${safe(t.title)}"
+      onclick="TFPlus.openTaskDatePicker(this)"><span>${value?date(t[field]):'Set date'}</span><span class="tf-date-icon" aria-hidden="true">▦</span></button>
+      <input class="tf-date-native" type="date" value="${safe(value)}" aria-label="${label} date for ${safe(t.title)}"
+        onchange="TFPlus.saveTaskDate(this,'${t.id}','${field}')" onkeydown="if(event.key==='Escape')this.blur()" /></span>`;
+  }
+  function openTaskDatePicker(button){
+    const input=button.closest('.tf-date-editor')?.querySelector('input[type="date"]');
+    if(!input)return;
+    try{if(typeof input.showPicker==='function')input.showPicker();else input.focus();}
+    catch(_){input.focus();input.click();}
+  }
+  async function saveTaskDate(input,taskId,field){
+    if(!isManager())return;
+    const task=state.tasks.find(t=>t.id===taskId);if(!task)return;
+    const value=input.value||'',previous=iso(task[field]);
+    if(value===previous)return;
+    input.disabled=true;
+    try{await plusPost({action:'set_task_date',taskId,field,date:value});}
+    catch(ex){input.value=previous;input.disabled=false;error(ex);}
+  }
+  async function quickCreateTask(input){
+    if(!isManager()||!input||ui.quickBusy)return;
+    const title=String(input.value||'').trim();
+    if(!title){input.focus();return;}
+    if(title.length>220){error(new Error('Task name must be 220 characters or fewer'));return;}
+    const projectId=input.dataset.projectId||'',taskListId=input.dataset.listId||'';
+    if(!projectId){error(new Error('Open a project before adding a task inline'));return;}
+    ui.quickBusy=true;input.disabled=true;
+    const addButton=input.closest('tr')?.querySelector('.tf-quick-save');if(addButton)addButton.disabled=true;
+    try{
+      await plusPost({action:'quick_create_task',projectId,taskListId,title});
+      const next=[...document.querySelectorAll('.tf-quick-input')].find(el=>el.dataset.projectId===projectId&&el.dataset.listId===taskListId);
+      if(next)next.focus();
+    }catch(ex){input.disabled=false;if(addButton)addButton.disabled=false;error(ex);input.focus();}
+    finally{ui.quickBusy=false;}
+  }
+  function quickTaskKey(event,input){
+    if(event.key==='Enter'){event.preventDefault();event.stopPropagation();quickCreateTask(input);}
+    else if(event.key==='Escape'){input.value='';input.blur();}
+  }
+  function quickTaskButton(button){quickCreateTask(button.closest('tr')?.querySelector('.tf-quick-input'));}
+
   function taskGrid(rows,projectId=''){
     const size=25,group=ui.groupBy||'none',groups=new Map();
     const groupKey=t=>group==='taskList'?(t.taskListId?(arr('taskLists').find(x=>x.id===t.taskListId)?.title||'General'):'General'):
@@ -235,17 +292,24 @@
     const all=rows.length;const count=Math.max(1,Math.ceil(all/size));ui.page=Math.min(ui.page,count);
     const ordered=[...groups.values()].flat();const visible=ordered.slice((ui.page-1)*size,ui.page*size);
     const head=(field,label)=>`<button class="tf-column" onclick="TFPlus.sortTasks('${field}')">${label}${ui.sort===field?(ui.desc?' ↓':' ↑'):''}</button>`;
-    let tr='';let previous='';
-    for(const t of visible){const current=groupKey(t);if(group!=='none'&&current!==previous){previous=current;tr+=`<tr class="tf-group-row"><td colspan="11">⌄ <strong>${safe(current)}</strong> <small>${groups.get(current)?.length||0} tasks</small></td></tr>`;}
+    let tr='';let previous='',previousListId='';
+    for(const t of visible){const current=groupKey(t);if(group!=='none'&&current!==previous){
+      if(previous&&projectId&&isManager()&&group==='taskList')tr+=quickTaskRow(projectId,previousListId,previous);
+      previous=current;previousListId=t.taskListId||'';
+      tr+=`<tr class="tf-group-row"><td colspan="11">⌄ <strong>${safe(current)}</strong> <small>${groups.get(current)?.length||0} tasks</small></td></tr>`;
+    }
+
       const overdue=t.dueAt&&iso(t.dueAt)<today()&&t.status!=='completed';
       tr+=`<tr class="tf-interactive" onclick="TFPlus.taskEditor('${t.id}')"><td class="tf-check-td" onclick="event.stopPropagation()">${isManager()?`<input type="checkbox" aria-label="Select task ${safe(t.title)}" ${ui.selected.has(t.id)?'checked':''} onchange="TFPlus.toggleTask('${t.id}',this.checked)">`:''}</td>
         <td><span class="tf-id">${safe(t.code)}</span></td><td class="tf-task-name"><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)}${t.parentId?' · Subtask':''}</small></td>
         <td>${safe(t.projectName||'—')}</td><td><span class="tf-owner"><i>${initials(teamName(t))}</i><span>${safe(teamName(t))}</span>${t.assigneeIds?.length?`<small>+${t.assigneeIds.length}</small>`:''}</span></td>
         <td onclick="event.stopPropagation()">${canChangeTask(t)?`<select class="tf-status-select tf-${safe(t.status)}" aria-label="Task status" onchange="TFPlus.setTaskStatus('${t.id}',this.value)">${TaskStatus.map(([v,label])=>`<option value="${v}" ${v===t.status?'selected':''}>${label}</option>`).join('')}</select>`:statusPill(t.status)}</td>
         <td>${(t.tags||[]).slice(0,2).map(tag=>`<span class="tf-tag">${safe(tag)}</span>`).join('')||'—'}</td>
-        <td>${date(t.startAt)}</td><td class="${overdue?'tf-overdue':''}">${date(t.dueAt)}${overdue?'<small>Overdue</small>':''}</td>
+        <td onclick="event.stopPropagation()">${taskDateControl(t,'startAt')}</td><td onclick="event.stopPropagation()" class="${overdue?'tf-overdue':''}">${taskDateControl(t,'dueAt')}${overdue?'<small>Overdue</small>':''}</td>
         <td>${t.estimatedHours?`${t.estimatedHours}h`:'—'}</td><td>${statusPill(t.priority)}</td></tr>`;
     }
+    // Keep one entry row at the end of each task list, as in spreadsheet-style project tools.
+    if(projectId&&isManager())tr+=quickTaskRow(projectId,group==='taskList'?previousListId:'',group==='taskList'?previous:'General');
     return `<section class="tf-pane tf-list-pane"><div class="tf-list-title"><span>Group by: <b>${safe(group==='taskList'?'Task List':group==='none'?'None':group)}</b> · ${fmtCount(all)} tasks</span>${isManager()&&projectId?button('＋ Add task list',`TFPlus.taskListModal('${projectId}')`):''}</div>
       ${ui.selected.size&&isManager()?`<div class="tf-bulk-bar"><b>${ui.selected.size} selected</b>${button('Mark completed',"TFPlus.bulkStatus('completed')",'primary')}${button('In progress',"TFPlus.bulkStatus('in_progress')")}${button('Clear',"TFPlus.clearSelection()")}</div>`:''}
       <div class="tf-table-scroll"><table class="tf-grid tf-task-table"><thead><tr><th class="tf-check-td">${isManager()?`<input type="checkbox" aria-label="Select visible tasks" onchange="TFPlus.selectVisibleTasks(this.checked)">`:''}</th><th>ID</th><th>${head('title','Task name')}</th><th>Project</th><th>${head('owner','Owner')}</th><th>${head('status','Status')}</th><th>Tags</th><th>Start date</th><th>${head('dueAt','Due date')}</th><th>Duration</th><th>${head('priority','Priority')}</th></tr></thead><tbody>${tr||`<tr><td colspan="11">${empty('No tasks found','Change filters or create your first task.')}</td></tr>`}</tbody></table></div>
@@ -675,6 +739,7 @@
     toggleTask(id,checked){if(checked)ui.selected.add(id);else ui.selected.delete(id);render()},
     selectVisibleTasks(checked){const rows=getFilteredTasks(getProjectScope());const groups=new Map();const key=t=>ui.groupBy==='taskList'?(arr('taskLists').find(x=>x.id===t.taskListId)?.title||'General'):ui.groupBy==='project'?(t.projectName||'No project'):ui.groupBy==='status'?titleStatus(t.status):ui.groupBy==='owner'?teamName(t):'All tasks';for(const t of rows){const k=key(t);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t)}for(const t of [...groups.values()].flat().slice((ui.page-1)*25,ui.page*25)){if(checked)ui.selected.add(t.id);else ui.selected.delete(t.id)}render()},
     clearSelection(){ui.selected.clear();render()},bulkStatus,taskEditor,taskListModal,setTaskStatus,
+    quickTaskKey,quickTaskButton,openTaskDatePicker,saveTaskDate,
     changeFilter,resetFilters,openFilters(){ui.drawer=true;render()},closeFilters(){ui.drawer=false;render()},applyFilters,
     saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,homeTaskFilter,moreHomeTasks,teamModal,removeTeamMember,
     phaseModal,phaseStatus,issueModal,issueStatus,setIssueFilter(v){ui.issuesStatus=v;render()},

@@ -19,7 +19,9 @@ function mockUI(role){
  const work={ctx, clients:[{id:clientId,name:'Studio Client',code:'client'}],members:[{id:1,role:'admin',name:'Administrator'},{id:2,role:'employee',name:'Maya Dev'},{id:3,role:'employee',name:'Other'}],assignments:[],projects:[{id:projectId,clientId,clientName:'Studio Client',title:'Website relaunch',status:'active',code:'TF-01',progress:40,ownerName:'Maya Dev',groupName:'',tags:[]}],tasks,updates:[],notes:[],events:[],notifications:[],activities:[],records:[]};
  const operations={attendance:[],leaves:[],timeEntries:[],approvalRequests:[],supportTickets:[],milestones:[],salesLeads:[],savedViews:[],serverToday:'2026-11-19'};
  const plus={projectIssues:[],projectFeed:[],projectDocs:[],projectTeams:[],taskLists:[],dashboardLayouts:[],defaultWidgets:{global:['stats','today','overdue'],project:['stats','progress']},projectGroups:[]};
- const env={window:null,document:doc,console,Promise,Date,Intl,Math,Number,String,Object,Array,Set,Map,JSON,Error,URLSearchParams,FormData:class{},location:{hash:''},history:{replaceState(){}},localStorage:{getItem(){return null},setItem(){}},MutationObserver:class{observe(){}},setInterval(){},setTimeout(fn){fn()},clearTimeout(){},alert(){},confirm(){return true},navigator:{},fetch:async(url)=>{
+ const requests=[];
+ const env={__requests:requests,window:null,document:doc,console,Promise,Date,Intl,Math,Number,String,Object,Array,Set,Map,JSON,Error,URLSearchParams,FormData:class{},location:{hash:''},history:{replaceState(){}},localStorage:{getItem(){return null},setItem(){}},MutationObserver:class{observe(){}},setInterval(){},setTimeout(fn){fn()},clearTimeout(){},alert(){},confirm(){return true},navigator:{},fetch:async(url,opts={})=>{
+    if(opts.method==='POST')requests.push({url,body:JSON.parse(opts.body)});
     let data=url.startsWith('/api/workspace/')?work:url.startsWith('/api/operations/')?operations:url.startsWith('/api/projects-plus/')?plus:{};
     return {ok:true,status:200,json:async()=>data,text:async()=>JSON.stringify(data)};
   }};
@@ -55,10 +57,27 @@ async function run(role){
   ctx.TFPlus.openProject(projectId);
   assert(home().includes('Documents')&&!home().includes('>Users</button>')&&!home().includes('>Reports</button>'),'Employee has management project tabs');
   ctx.go('tasks');assert(!home().includes('＋ Add task'),'Employee can create new tasks from list');
+  ctx.TFPlus.openProject(projectId);ctx.TFPlus.switchProjectTab('tasks');
+  assert(!home().includes('tf-quick-task-row'),'Employee has unauthorized quick-create row');
+  assert(!home().includes('tf-date-editor'),'Employee has unauthorized task-date editors');
  }else{
   assert(nav().includes('Team &amp; hierarchy')&&nav().includes('Workflows'),'Admin menu changed: '+nav().slice(0,950));
   assert(home().includes('Other person secret task'),'Admin lacks access to team tasks');
   assert(home().includes('Customize dashboard'),'Admin customization missing');
+  ctx.TFPlus.openProject(projectId);ctx.TFPlus.switchProjectTab('tasks');
+  assert(home().includes('tf-quick-task-row'),'Manager quick-add row missing from project task table');
+  assert(home().includes('tf-date-editor'),'Clickable date editor missing from task table');
+  assert(home().includes('TFPlus.openTaskDatePicker(this)'),'Inline date picker action not wired');
+  const quick={value:'  Create inline task  ',dataset:{projectId,listId:''},disabled:false,
+    closest(){return {querySelector(){return {disabled:false}}}},focus(){}};
+  ctx.TFPlus.quickTaskKey({key:'Enter',preventDefault(){},stopPropagation(){}},quick);
+  for(let i=0;i<25&&!env.__requests.some(v=>v.body.action==='quick_create_task');i++)await new Promise(resolve=>setImmediate(resolve));
+  const sent=env.__requests.find(v=>v.body.action==='quick_create_task');
+  assert(sent&&sent.body.title==='Create inline task'&&sent.body.projectId===projectId,'Inline task creation not posted with correct project');
+  for(let i=0;i<25&&!ctx.state.ctx;i++)await new Promise(resolve=>setImmediate(resolve));
+  const picker={value:'2026-11-25',disabled:false};
+  await ctx.TFPlus.saveTaskDate(picker,'11111111-1111-4111-8111-111111111111','dueAt');
+  assert(env.__requests.some(v=>v.body.action==='set_task_date'&&v.body.field==='dueAt'&&v.body.date==='2026-11-25'),'Inline calendar did not save date');
  }
  console.log(`${role} UI smoke test passed: ${vm.runInContext('menus[state.ctx.role].length',ctx)} navigation items, task register + role controls`);
 }
