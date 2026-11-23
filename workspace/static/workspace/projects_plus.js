@@ -9,7 +9,8 @@
     drawer: false, selected: new Set(), collapsed: new Set(),
     filters: { status: 'open', search: '', logic: 'all' },
     homeTaskQuery: '', homeTaskStatus: 'all', homeTaskLimit: 15,
-    issuesStatus: 'open', feedProject: '', taskProject: '', quickBusy: false,
+    issuesStatus: 'open', feedProject: '', taskProject: '',
+    detailTaskId: '', detailTab: 'overview', detailData: null, detailLoading: false, detailBusy: false, ganttOffset: 0, quickBusy: false,
   };
   const isStaff = () => state.ctx?.role !== 'client';
   const isManager = () => ['admin', 'manager'].includes(state.ctx?.role);
@@ -101,6 +102,7 @@
   function openProject(id,tab='dashboard'){
     if(!projectBy(id))return;
     if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(tab))tab='dashboard';
+    if(state.ctx?.role==='client'&&!['dashboard','tasks','documents','issues','feed','approvals'].includes(tab))tab='dashboard';
     ui.project=id;ui.projectTab=tab;ui.page=1;ui.selected.clear();state.tab='projects';render();
     try{history.replaceState(null,'','#projects/'+id+'/'+tab)}catch(_){}
   }
@@ -108,15 +110,16 @@
   function projectDetail(){
     const p=projectBy(ui.project);if(!p)return projectList();
     if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(ui.projectTab))ui.projectTab='dashboard';
-    const tabs=isEmployee()?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed']]:[['dashboard','Dashboard'],['tasks','Tasks'],['users','Users'],['reports','Reports'],['documents','Documents'],['phases','Phases'],['timelogs','Time Logs'],['issues','Issues'],['feed','Feed'],['timesheets','Timesheets'],['approvals','Approvals']];
+    if(state.ctx?.role==='client'&&!['dashboard','tasks','documents','issues','feed','approvals'].includes(ui.projectTab))ui.projectTab='dashboard';
+    const tabs=isEmployee()?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed']]:state.ctx?.role==='client'?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed'],['approvals','Approvals']]:[['dashboard','Dashboard'],['tasks','Tasks'],['workload','Workload'],['users','Users'],['reports','Reports'],['documents','Documents'],['phases','Phases'],['timelogs','Time Logs'],['issues','Issues'],['feed','Feed'],['timesheets','Timesheets'],['approvals','Approvals']];
     const buttons=isManager()?`${button('✎ Edit',`projectModal('${p.id}')`)}${button('＋ Add task',`TFPlus.taskEditor('','${p.id}')`,'primary')}`:state.ctx.role==='client'?button('＋ Support ticket',"go('tickets')",'primary'):'';
-    const tabHtml={dashboard:()=>dashboard('project:'+p.id,p),tasks:()=>taskWorkspace(p.id),users:()=>projectUsers(p),reports:()=>projectReports(p),documents:()=>projectDocuments(p),phases:()=>projectPhases(p),timelogs:()=>projectTimeLogs(p),issues:()=>issueWorkspace(p.id),feed:()=>projectFeed(p),timesheets:()=>projectTimeLogs(p,true),approvals:()=>projectApprovals(p)}[ui.projectTab] || (()=>dashboard('project:'+p.id,p));
+    const tabHtml={dashboard:()=>dashboard('project:'+p.id,p),tasks:()=>taskWorkspace(p.id),workload:()=>workloadView(projectTasks(p.id),p.id),users:()=>projectUsers(p),reports:()=>projectReports(p),documents:()=>projectDocuments(p),phases:()=>projectPhases(p),timelogs:()=>projectTimeLogs(p),issues:()=>issueWorkspace(p.id),feed:()=>projectFeed(p),timesheets:()=>projectTimeLogs(p,true),approvals:()=>projectApprovals(p)}[ui.projectTab] || (()=>dashboard('project:'+p.id,p));
     return `<div class="tf-breadcrumb"><button onclick="TFPlus.backProjects()">Projects</button><span>›</span><span>${safe(p.code)} · ${safe(p.title)}</span></div>
       <div class="tf-project-hero"><div><div class="tf-overline">${safe(p.clientName)} ${p.groupName?'/ '+safe(p.groupName):''}</div><div class="tf-project-title"><h1>${safe(p.title)}</h1>${statusPill(p.status)}</div><p>${safe(p.description||'Deliverables, people and progress in one shared project space.')}</p><div class="tf-hero-info"><span>◉ ${safe(p.ownerName||'No owner')}</span><span>▣ Due ${date(p.dueDate)}</span><span>◈ ${p.progress}% complete</span></div></div><div class="tf-hero-actions">${buttons}</div></div>
       <nav class="tf-tabs" aria-label="Project sections">${tabs.map(([key,label])=>`<button class="${ui.projectTab===key?'active':''}" onclick="TFPlus.switchProjectTab('${key}')">${label}</button>`).join('')}</nav>
       <div class="tf-project-body">${tabHtml()}</div>`;
   }
-  function switchProjectTab(key){if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(key))return;ui.projectTab=key;ui.selected.clear();ui.page=1;render();try{history.replaceState(null,'','#projects/'+ui.project+'/'+key)}catch(_){}}
+  function switchProjectTab(key){if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(key))return;if(state.ctx?.role==='client'&&!['dashboard','tasks','documents','issues','feed','approvals'].includes(key))return;ui.projectTab=key;ui.selected.clear();ui.page=1;render();try{history.replaceState(null,'','#projects/'+ui.project+'/'+key)}catch(_){}}
   function projects(){return getProjectScope()?projectDetail():projectList()}
 
   const filterFields = [
@@ -223,7 +226,7 @@
       ${isManager()?`${button(`⚑ Filters${active?' ('+active+')':''}`,'TFPlus.openFilters()','filter')}${button('Reset filters','TFPlus.resetFilters()')}${button('☆ Save view','TFPlus.saveTaskView()')}<select aria-label="Saved views" onchange="TFPlus.loadTaskView(this.value)">${optionList(saved.map(v=>[String(v.id),v.name]),'','Saved views…')}</select>`:''}
     </div><div class="tf-task-tools">
       ${isManager()?`<select aria-label="Group tasks" onchange="TFPlus.changeGroup(this.value)">${optionList([['none','No grouping'],['taskList','By task list'],['project','By project'],['status','By status'],['owner','By owner']],ui.groupBy,'Group by…')}</select>`:''}
-      ${button('☷ List',"TFPlus.setView('list')",ui.view==='list'?'selected':'')}${button('▦ Board',"TFPlus.setView('board')",ui.view==='board'?'selected':'')}
+      ${button('☷ List',"TFPlus.setView('list')",ui.view==='list'?'selected':'')}${button('▦ Kanban',"TFPlus.setView('board')",ui.view==='board'?'selected':'')}${button('▥ Gantt',"TFPlus.setView('gantt')",ui.view==='gantt'?'selected':'')}${isManager()?button('▤ Workload',"TFPlus.setView('workload')",ui.view==='workload'?'selected':''):''}
       ${isManager()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):''}
     </div></div>`;
   }
@@ -318,15 +321,123 @@
   function boardView(rows){
     return `<div class="tf-kanban">${TaskStatus.map(([status,label])=>{const cards=rows.filter(t=>t.status===status);return `<section class="tf-kanban-lane"><h3>${label}<span>${cards.length}</span></h3>${cards.map(t=>`<button class="tf-kanban-card" onclick="TFPlus.taskEditor('${t.id}')"><span class="tf-id">${safe(t.code)}</span><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)}</small><div>${statusPill(t.priority)}<span>◷ ${date(t.dueAt)}</span></div><div class="tf-kanban-owner"><i>${initials(teamName(t))}</i>${safe(teamName(t))}</div></button>`).join('')||empty('Empty lane')}</section>`}).join('')}</div>`;
   }
+  // Gantt and resource reporting are computed from real visible task rows.
+  // No fabricated records or assumed completed work.
+  function dayIndex(value){
+    const raw=iso(value);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return NaN;
+    const n=Date.parse(raw+'T12:00:00Z');return Number.isFinite(n)?Math.floor(n/86400000):NaN;
+  }
+  const dayLabel = n => new Date(n*86400000).toLocaleDateString('en-IN',{day:'2-digit',month:'short',timeZone:'UTC'});
+  function ganttView(rows,projectId=''){
+    const tasks=rows.slice(0,180),now=dayIndex(today());
+    // Bounded viewport is intentionally navigable; old tasks cannot force an
+    // enormous timeline that hides current work or freezes low-memory devices.
+    const start=now-14+(ui.ganttOffset*30);
+    const end=start+89;
+    const days=end-start+1,unit=33,chartW=days*unit;
+    const months=[];let prev='';
+    for(let i=0;i<days;i++){
+      const n=start+i,month=new Date(n*86400000).toLocaleDateString('en-IN',{month:'long',year:'numeric',timeZone:'UTC'});
+      if(month!==prev){months.push({name:month,first:i,length:1});prev=month}else months[months.length-1].length++;
+    }
+    const headerDates=Array.from({length:days},(_,i)=>{
+      const d=new Date((start+i)*86400000),dow=d.getUTCDay();
+      return `<span class="tf-gantt-date ${dow===0||dow===6?'weekend':''} ${start+i===now?'today':''}" style="width:${unit}px">${d.getUTCDate()}<small>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow]}</small></span>`;
+    }).join('');
+    const row=tasks.map(t=>{
+      const a=dayIndex(t.startAt),b=dayIndex(t.dueAt),plannedStart=Number.isFinite(a)?a:(Number.isFinite(b)?b:NaN);
+      const plannedEnd=Number.isFinite(b)?b:plannedStart;
+      const visible=Number.isFinite(plannedStart) && plannedEnd>=start && plannedStart<=end;
+      const left=Math.max(0,plannedStart-start)*unit, width=Math.max(14,Math.min(end,Math.max(plannedStart,plannedEnd))-Math.max(start,plannedStart)+1)*unit-4;
+      const blocked=t.blockedBy&&state.tasks.some(d=>d.id===t.blockedBy && d.status!=='completed');
+      const text=`${safe(t.title)} · ${safe(t.assignedName||'Unassigned')}`;
+      const bar=visible?`<button type="button" class="tf-gantt-bar tf-gantt-${safe(t.status)} ${blocked?'blocked':''}" style="left:${left}px;width:${width}px" onclick="TFPlus.openTaskDrawer('${t.id}')" title="${text}"><span class="tf-gantt-fill" style="width:${Math.min(100,Number(t.percentComplete)||0)}%"></span><strong>${safe(t.title)}</strong></button>`:`<button type="button" class="tf-gantt-unscheduled" onclick="TFPlus.openTaskDrawer('${t.id}')">${Number.isFinite(plannedStart)?'Outside range':'Set schedule ↗'}</button>`;
+      return `<div class="tf-gantt-row"><div class="tf-gantt-task"><button onclick="TFPlus.openTaskDrawer('${t.id}')"><strong>${safe(t.title)}</strong><small>${safe(t.projectName||'General workspace')} ${blocked?'· ⛓ Blocked':''}</small></button></div><div class="tf-gantt-track" style="width:${chartW}px;background-size:${unit}px 100%">${bar}</div></div>`;
+    }).join('');
+    return `<section class="tf-pane tf-gantt-pane" aria-label="Task timeline"><div class="tf-gantt-toolbar"><div><h3>Gantt timeline</h3><p>${rows.length} scheduled and unscheduled tasks · Select a bar to open its task</p></div><div class="tf-gantt-controls"><button type="button" onclick="TFPlus.navigateGantt(-1)" aria-label="Previous month">‹</button><button type="button" onclick="TFPlus.navigateGantt(0)">Today</button><button type="button" onclick="TFPlus.navigateGantt(1)" aria-label="Next month">›</button><span class="tf-gantt-legend"><i></i> Planned work</span></div></div>
+      <div class="tf-gantt-scroll"><div class="tf-gantt-months"><span class="tf-gantt-lefthead">TASK / PROJECT</span><div style="width:${chartW}px">${months.map(m=>`<span style="width:${m.length*unit}px">${safe(m.name)}</span>`).join('')}</div></div>
+      <div class="tf-gantt-dates"><span class="tf-gantt-lefthead">${safe(projectId?projectBy(projectId)?.title:'All projects')}</span><div style="width:${chartW}px">${headerDates}</div></div>${row||empty('No tasks for this timeline','Create tasks or adjust your filters.')}</div>
+      ${rows.length>180?'<p class="tf-gantt-note">Showing 180 tasks for timeline performance. Use project or status filters to narrow the view.</p>':''}</section>`;
+  }
+  function workloadView(rows,projectId=''){
+    // Planned capacity is a benchmark, not an employee attendance or actual-hours measurement.
+    const capacity=40,week=7,now=dayIndex(today()),next=now+week;
+    const people=state.members.filter(m=>['employee','manager','admin'].includes(m.role));
+    const table=people.map(m=>{
+      const owned=rows.filter(t=>t.status!=='completed'&&(String(t.assignedTo)===String(m.id)||(t.assigneeIds||[]).some(id=>String(id)===String(m.id))));
+      if(!owned.length)return null;
+      const dueThisWeek=owned.filter(t=>{const d=dayIndex(t.dueAt);return Number.isFinite(d)&&d>=now&&d<=next});
+      const overdue=owned.filter(t=>{const d=dayIndex(t.dueAt);return Number.isFinite(d)&&d<now});
+      const hours=owned.filter(t=>{const d=dayIndex(t.dueAt);return Number.isFinite(d)&&d<=next;}).reduce((s,t)=>s+(Number(t.estimatedHours)||0),0);
+      const ratio=Math.min(100,Math.round((hours/capacity)*100));
+      return `<tr><td><span class="tf-owner"><i>${safe(initials(m.name))}</i><strong>${safe(m.name)}</strong></span></td><td>${owned.length}</td><td>${dueThisWeek.length}</td><td>${overdue.length?`<strong class="tf-overdue">${overdue.length}</strong>`:'0'}</td><td><div class="tf-load-meter"><span style="width:${ratio}%" class="${hours>capacity?'overcapacity':''}"></span></div><small>${hours.toFixed(1)} estimated h / ${capacity} h reference</small></td></tr>`;
+    }).filter(Boolean).join('');
+    const unassigned=rows.filter(t=>!t.assignedTo&&!(t.assigneeIds||[]).length&&t.status!=='completed');
+    return `<section class="tf-pane tf-workload-pane"><div class="tf-gantt-toolbar"><div><h3>Team workload</h3><p>Actual assignments, due dates and estimated hours; a planning reference, not attendance.</p></div><span class="tf-workload-note">40 h reference · Due by next 7 days</span></div>
+    <div class="tf-table-scroll"><table class="tf-grid"><thead><tr><th>Team member</th><th>Open tasks</th><th>Due next 7 days</th><th>Overdue</th><th>Estimated hours due soon</th></tr></thead><tbody>${table||`<tr><td colspan="5">${empty('No assigned work found')}</td></tr>`}</tbody></table></div>${unassigned.length?`<p class="tf-gantt-note">${unassigned.length} tasks are still unassigned. Assign an owner from each task detail.</p>`:''}</section>`;
+  }
+
+  const taskDetailURL=id=>`/api/task-detail/${encodeURIComponent(id)}/`;
+  function closeTaskDrawer(){ui.detailTaskId='';ui.detailData=null;const host=document.getElementById('tfTaskDrawerHost');if(host)host.innerHTML='';}
+  function taskDetailTab(tab){ui.detailTab=tab;drawTaskDrawer();}
+  async function openTaskDrawer(id,tab='overview'){
+    const task=state.tasks.find(t=>t.id===id);if(!task)return;
+    ui.detailTaskId=id;ui.detailTab=tab;ui.detailData=null;ui.detailLoading=true;drawTaskDrawer();
+    try{
+      const data=await fetchJSON(taskDetailURL(id));
+      if(ui.detailTaskId!==id)return;
+      ui.detailData=data;ui.detailLoading=false;drawTaskDrawer();
+    }catch(ex){if(ui.detailTaskId===id){ui.detailLoading=false;ui.detailData={error:ex.message};drawTaskDrawer();}}
+  }
+  async function refreshTaskDrawer(){const id=ui.detailTaskId;if(!id)return;const data=await fetchJSON(taskDetailURL(id));if(id===ui.detailTaskId){ui.detailData=data;ui.detailLoading=false;drawTaskDrawer();}}
+  async function taskAction(payload){
+    const id=ui.detailTaskId;if(!id||ui.detailBusy)return;
+    ui.detailBusy=true;
+    try{
+      const result=await fetchJSON(taskDetailURL(id),{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':decodeURIComponent(cookie('csrftoken'))},body:JSON.stringify(payload)});
+      await load();
+      if(ui.detailTaskId===id)await refreshTaskDrawer();
+      if(payload.action==='duplicate'&&result.id){closeTaskDrawer();openTaskDrawer(result.id)}
+    }catch(ex){error(ex);}finally{ui.detailBusy=false;}
+  }
+  function addTaskComment(event){event.preventDefault();const form=event.target,body=form.querySelector('textarea')?.value||'';if(!body.trim())return;taskAction({action:'add_comment',body,isInternal:!!form.querySelector('[name="isInternal"]')?.checked});}
+  function addChecklist(event){event.preventDefault();const name=event.target.querySelector('input')?.value||'';if(name.trim())taskAction({action:'add_check',title:name});}
+  function toggleChecklist(id){taskAction({action:'toggle_check',checkId:id});}
+  function deleteChecklist(id){if(isManager()&&confirm('Remove this checklist item?'))taskAction({action:'delete_check',checkId:id});}
+  function updateDependency(value){taskAction({action:'set_dependency',blockedBy:value});}
+  function duplicateTask(){if(isManager()&&confirm('Create an internal copy of this task?'))taskAction({action:'duplicate'});}
+  function drawTaskDrawer(){
+    const host=document.getElementById('tfTaskDrawerHost');if(!host)return;
+    const t=state.tasks.find(x=>x.id===ui.detailTaskId);if(!t){host.innerHTML='';return;}
+    const d=ui.detailData||{},loading=ui.detailLoading;
+    const tabs=[['overview','Overview'],['comments','Comments'],['checklist','Checklist'],['activity','Activity']];
+    const dependency=state.tasks.find(x=>x.id===t.blockedBy);
+    const canEdit=canChangeTask(t);
+    const details=`<div class="tf-drawer-fields"><div><span>Status</span><strong>${statusPill(t.status)}</strong></div><div><span>Priority</span><strong>${statusPill(t.priority)}</strong></div><div><span>Owner</span><strong>${safe(teamName(t))}</strong></div><div><span>Project</span><strong>${safe(t.projectName||t.clientName)}</strong></div><div><span>Start date</span><strong>${date(t.startAt)}</strong></div><div><span>Due date</span><strong>${date(t.dueAt)}</strong></div><div><span>Estimate</span><strong>${Number(t.estimatedHours)||0} h</strong></div><div><span>Completion</span><strong>${t.percentComplete||0}%</strong></div></div>
+      <div class="tf-drawer-section"><h4>Description</h4><p>${safe(t.description||'No description provided. Open Edit task to add a brief.')}</p></div>
+      <div class="tf-drawer-section"><h4>Dependency</h4>${isManager()?`<select aria-label="Task predecessor" onchange="TFPlus.updateDependency(this.value)"><option value="">No predecessor</option>${state.tasks.filter(x=>x.projectId&&x.projectId===t.projectId&&x.id!==t.id).map(x=>`<option value="${x.id}" ${x.id===t.blockedBy?'selected':''}>${safe(x.title)}</option>`).join('')}</select>`:`<p>${safe(dependency?.title||'No predecessor')}</p>`}${dependency&&dependency.status!=='completed'?'<p class="tf-overdue">This task depends on unfinished work.</p>':''}</div>`;
+    const comments=(d.comments||[]).map(c=>`<div class="tf-detail-comment"><span class="tf-comment-avatar">${safe(initials(c.author))}</span><div><header><strong>${safe(c.author)}</strong>${c.isInternal?'<em>Internal</em>':''}<time>${fmt(c.createdAt)}</time></header><p>${safe(c.body)}</p></div></div>`).join('')||'<p class="tf-drawer-muted">No comments yet. Start the conversation.</p>';
+    const commentForm=`<form class="tf-detail-form" onsubmit="TFPlus.addTaskComment(event)"><label for="tfDetailComment">Add a comment</label><textarea id="tfDetailComment" required maxlength="4000" rows="3" placeholder="Share an update or ask for feedback…"></textarea><div>${isStaff()?'<label class="tf-checklabel"><input type="checkbox" name="isInternal"> Internal only</label>':''}<button type="submit" class="tf-btn primary">Post comment</button></div></form>`;
+    const checklist=d.checklist||[],finished=checklist.filter(x=>x.done).length;
+    const checklistView=`<div class="tf-checklist-progress">${finished} of ${checklist.length} complete <span>${checklist.length?Math.round(finished/checklist.length*100):0}%</span><div><i style="width:${checklist.length?finished/checklist.length*100:0}%"></i></div></div>${checklist.map(c=>`<div class="tf-checklist-item"><label><input type="checkbox" ${c.done?'checked':''} ${canEdit?'':'disabled'} onchange="TFPlus.toggleChecklist('${c.id}')"><span class="${c.done?'done':''}">${safe(c.title)}</span></label>${isManager()?`<button type="button" onclick="TFPlus.deleteChecklist('${c.id}')" aria-label="Remove checklist item">×</button>`:''}</div>`).join('')||'<p class="tf-drawer-muted">No checklist items yet.</p>'}${canEdit?'<form class="tf-checklist-new" onsubmit="TFPlus.addChecklist(event)"><input type="text" maxlength="240" placeholder="Add checklist item…" required><button type="submit" class="tf-btn">Add ↵</button></form>':''}`;
+    const activity=(d.activity||[]).map(a=>`<div class="tf-detail-activity"><i></i><div><strong>${safe(a.action)}</strong><p>${safe(a.detail)}</p><small>${safe(a.author)} · ${fmt(a.createdAt)}</small></div></div>`).join('')||'<p class="tf-drawer-muted">No activity recorded for this task.</p>';
+    const content=loading?'<div class="tf-drawer-loading">Loading task details…</div>':d.error?`<p class="tf-form-error">${safe(d.error)}</p>`:ui.detailTab==='overview'?details:ui.detailTab==='comments'?comments+commentForm:ui.detailTab==='checklist'?checklistView:activity;
+    host.innerHTML=`<div class="tf-detail-overlay" onclick="TFPlus.closeTaskDrawer()"></div><aside class="tf-detail-drawer" role="dialog" aria-modal="true" aria-label="Task details"><div class="tf-detail-top"><span>PROJECTS / TASK DETAILS</span><button type="button" onclick="TFPlus.closeTaskDrawer()" aria-label="Close details">✕</button></div><div class="tf-detail-heading"><div class="tf-id">${safe(t.code||'TASK')}</div><h2>${safe(t.title)}</h2><div>${statusPill(t.status)} ${statusPill(t.priority)}</div></div>
+      <div class="tf-detail-actions">${isManager()?`<button onclick="TFPlus.closeTaskDrawer();TFPlus.taskEditor('${t.id}','','true')">✎ Edit task</button><button onclick="TFPlus.duplicateTask()">⧉ Duplicate</button>`:''}${isEmployee()&&canEdit&&t.status!=='completed'?`<button onclick="TFPlus.setTaskStatus('${t.id}','completed');TFPlus.closeTaskDrawer()">✓ Complete</button>`:''}</div>
+      <nav class="tf-detail-tabs">${tabs.map(([key,label])=>`<button type="button" class="${ui.detailTab===key?'active':''}" onclick="TFPlus.taskDetailTab('${key}')">${label}${key==='comments'&&d.comments?.length?` <small>${d.comments.length}</small>`:''}</button>`).join('')}</nav><div class="tf-detail-content">${content}</div>
+      <footer class="tf-detail-footer"><span>Linked to ${safe(t.projectName||t.clientName)}</span><button type="button" onclick="TFPlus.closeTaskDrawer()">Close</button></footer></aside>`;
+  }
+
   function taskWorkspace(projectId=''){
     const rows=getFilteredTasks(projectId);
-    return `${taskToolbar(projectId)}${ui.view==='board'?boardView(rows):taskGrid(rows,projectId)}${!isEmployee()?filterDrawer():''}`;
+    return `${taskToolbar(projectId)}${ui.view==='board'?boardView(rows):ui.view==='gantt'?ganttView(rows,projectId):ui.view==='workload'&&isManager()?workloadView(rows,projectId):taskGrid(rows,projectId)}${!isEmployee()?filterDrawer():''}`;
   }
   function tasks(){return `${header(isEmployee()?'My tasks':'Tasks',isEmployee()?'Your assigned tasks, deadlines, and progress. Select any row to open its details.':'Plan, group, assign, filter and deliver every work item.',isManager()?`<a class="tf-btn" href="/api/project-export/tasks/">↓ Export tasks</a>`:'')}${taskWorkspace('')}`}
 
-  function taskEditor(id='',fixedProject=''){
+  function taskEditor(id='',fixedProject='',forceEdit=false){
     const t=state.tasks.find(x=>x.id===id)||{};
     if(id&&!t.id)return;
+    if(id&&!(forceEdit===true||forceEdit==='true'))return openTaskDrawer(id);
     if(isEmployee()&&!id)return;
     if(!isManager()){
       openModal(`<div class="tf-form-modal"><span class="tf-overline">TASK / ${safe(t.code)}</span><h2>${safe(t.title)}</h2><p>${safe(t.description||'No description')}</p>
@@ -364,6 +475,7 @@
         o.clientVisible=fd.get('clientVisible')==='on';
         for(const k of ['startAt','dueAt'])if(o[k])o[k]=new Date(o[k]).toISOString();
         if(id)o.id=id;
+        o.blockedBy=t.blockedBy||'';
         await post({action:'save_task',...o});
       },id?'Save task':'Create task');
     const f=document.getElementById('tfModalForm');
@@ -733,12 +845,14 @@
     sortProjects(key){ui.projectDesc=ui.projectSort===key?!ui.projectDesc:false;ui.projectSort=key;render()},
     changeProjectPage(delta){ui.projectPage=Math.max(1,ui.projectPage+delta);render()},
     setProjectFilter(key,value){ui[key]=value;if(key!=='projectPage')ui.projectPage=1;render();if(key==='projectQuery'){const el=document.querySelector('input[aria-label="Search projects"]');el?.focus();el?.setSelectionRange(value.length,value.length)}},
+    navigateGantt(delta){ui.ganttOffset=delta===0?0:ui.ganttOffset+delta;render()},
     setView(view){ui.view=view;render()},changeGroup(group){ui.groupBy=group;ui.page=1;render()},
     sortTasks(key){ui.desc=ui.sort===key?!ui.desc:false;ui.sort=key;render()},
     pageTasks(delta){ui.page=Math.max(1,ui.page+delta);render()},
     toggleTask(id,checked){if(checked)ui.selected.add(id);else ui.selected.delete(id);render()},
     selectVisibleTasks(checked){const rows=getFilteredTasks(getProjectScope());const groups=new Map();const key=t=>ui.groupBy==='taskList'?(arr('taskLists').find(x=>x.id===t.taskListId)?.title||'General'):ui.groupBy==='project'?(t.projectName||'No project'):ui.groupBy==='status'?titleStatus(t.status):ui.groupBy==='owner'?teamName(t):'All tasks';for(const t of rows){const k=key(t);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t)}for(const t of [...groups.values()].flat().slice((ui.page-1)*25,ui.page*25)){if(checked)ui.selected.add(t.id);else ui.selected.delete(t.id)}render()},
     clearSelection(){ui.selected.clear();render()},bulkStatus,taskEditor,taskListModal,setTaskStatus,
+    openTaskDrawer,closeTaskDrawer,taskDetailTab,addTaskComment,addChecklist,toggleChecklist,deleteChecklist,updateDependency,duplicateTask,
     quickTaskKey,quickTaskButton,openTaskDatePicker,saveTaskDate,
     changeFilter,resetFilters,openFilters(){ui.drawer=true;render()},closeFilters(){ui.drawer=false;render()},applyFilters,
     saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,homeTaskFilter,moreHomeTasks,teamModal,removeTeamMember,

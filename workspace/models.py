@@ -492,3 +492,6 @@ from .collaboration_models import ChatConversation, ChatParticipant, ChatMessage
 
 # Billing models live in their own module to keep the workspace model file manageable.
 from .billing_models import BillingProfile, InvoiceSequence, BillingSchedule, Invoice, InvoiceLine, InvoicePayment  # noqa: E402,F401
+
+# Task-detail conversations and checklist workflow (additive).
+from .task_collab_models import TaskComment, TaskChecklistItem  # noqa: E402,F401

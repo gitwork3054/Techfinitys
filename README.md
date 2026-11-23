@@ -355,3 +355,9 @@ The application continues using temporary SQLite and local uploads on Render Fre
 Office Managers and Super Admins can open **Projects > a project > Tasks > List** and type directly into the **Add task…** row underneath each task group. **Enter** (or **Add ↵**) saves an internal draft task in that project/task list; **Escape** clears the draft. The server generates the task ID, keeps client visibility off until a manager deliberately publishes it, and records an audit entry. Employees cannot create tasks through this interface, preserving the restricted employee workspace.
 
 Click a task's **Start date** or **Due date** cell to open the browser's native date picker. Picking a date saves only that field, with server validation ensuring the due date cannot precede the start date. Clearing a date is supported. Users can still use the detailed task editor for descriptions, ownership, priority, and other settings.
+
+## 2026-11-23 — Projects workspace UI/UX modernization
+
+A redesigned, Techfinitys-branded light project-management interface now presents a compact navigation, tabbed project workspaces, dense editable task lists, and new Gantt / workload views. Task detail opens as a side drawer with real API-backed comments, checklist items, activity and dependency management, plus safe task duplication. Existing billing, employee operations, chat, client portal and Super Admin activity modules are preserved.
+
+**What remains:** This is not full Zoho Projects feature parity. Consult [`ZOHO_PARITY.md`](ZOHO_PARITY.md) for supported and future capabilities. The live Render Free preview is still **not suitable for production data** until its database and file storage are persistent.

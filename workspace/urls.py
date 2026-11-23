@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center
+from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center, task_collab
 urlpatterns=[
  path('api/admin-activity/',activity_center.admin_activity_api,name='admin_activity_api'),
  path('api/billing/', billing.billing_api, name='billing_api'),
@@ -13,6 +13,7 @@ urlpatterns=[
  path('api/collaboration/profile/',collaboration.own_profile,name='own_profile'),
  path('api/collaboration/avatar/<int:member_id>/',collaboration.avatar_file,name='avatar_file'),
  path('api/projects-plus/',projects_plus.projects_plus_api,name='projects_plus_api'),
+ path('api/task-detail/<uuid:task_id>/',task_collab.task_detail_api,name='task_detail_api'),
  path('api/projects-plus/upload/',projects_plus.document_upload,name='project_document_upload'),
  path('api/projects-plus/document/<uuid:document_id>/',projects_plus.document_download,name='project_document_download'),
  path('api/project-export/<str:kind>/',projects_plus.export_project_csv,name='project_csv'),

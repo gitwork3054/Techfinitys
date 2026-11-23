@@ -36,6 +36,11 @@ async function run(role){
  // dashboard html and navigation are the actual DOM string painted by shell/render.
  const home=()=>el('#mainContent').innerHTML,nav=()=>el('#nav').innerHTML;
  assert(home().includes('id="tfHomeTasks"'),`${role}: home task register missing (tab=${ctx.state.tab}, loading=${ctx.state.loading}, error=${ctx.state.error}, html=${home().slice(0,1800)})`);
+ // The Gantt timeline is a real view of visible task data, not a mock chart.
+ ctx.go('tasks');ctx.TFPlus.setView('gantt');
+ assert(home().includes('tf-gantt-pane')&&home().includes('Design the hero'),'Task Gantt timeline missing');
+ ctx.TFPlus.setView('list');ctx.go('overview');
+
  if(role==='employee'){
   assert(vm.runInContext('menus.employee.length',ctx)===9,`${role}: ${nav()}`);
   assert(nav().includes('My tasks')&&nav().includes('Attendance'), 'Employee task/attendance nav missing');
@@ -44,8 +49,14 @@ async function run(role){
   assert(!home().includes('Other person secret task'),'Employee home task register includes unassigned coworker task');
   assert(!home().includes('Customize dashboard'),'Employee got dashboard management');
   ctx.TFPlus.taskEditor('11111111-1111-4111-8111-111111111111');
-  assert(el('#modalRoot').innerHTML.includes('Mark completed'),'Employee task detail missing completion action');
-  assert(!el('#modalRoot').innerHTML.includes('name="assignedTo"'),'Employee task detail has manager edit field');
+  assert(el('#tfTaskDrawerHost').innerHTML.includes('Task details')||el('#tfTaskDrawerHost').innerHTML.includes('TASK DETAILS'),'Task detail drawer missing');
+  ctx.TFPlus.taskDetailTab('comments');
+  assert(el('#tfTaskDrawerHost').innerHTML.includes('Comments'),'Task comments tab is missing');
+  ctx.TFPlus.taskDetailTab('checklist');
+  assert(el('#tfTaskDrawerHost').innerHTML.includes('Checklist'),'Task checklist tab is missing');
+
+  assert(el('#tfTaskDrawerHost').innerHTML.includes('Complete'),'Employee task detail drawer missing completion action');
+  assert(!el('#tfTaskDrawerHost').innerHTML.includes('name="assignedTo"'),'Employee task detail has manager edit field');
   ctx.closeModal();
   ctx.go('team');assert(ctx.state.tab==='overview','Employee can navigate to hidden team page');
   ctx.TFPlus.homeTaskFilter('query','Publish');

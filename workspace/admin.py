@@ -186,3 +186,20 @@ class BillingScheduleAdmin(FinanceReadOnly):
 @admin.register(BillingProfile)
 class BillingProfileAdmin(FinanceReadOnly):
     list_display=('company_name','email','gstin','updated_at')
+
+
+from .models import TaskComment, TaskChecklistItem
+
+
+@admin.register(TaskComment)
+class TaskCommentAdmin(admin.ModelAdmin):
+    list_display=('task', 'client', 'author', 'is_internal', 'created_at')
+    list_filter=('is_internal', 'client')
+    search_fields=('body', 'task__title')
+
+
+@admin.register(TaskChecklistItem)
+class TaskChecklistItemAdmin(admin.ModelAdmin):
+    list_display=('title', 'task', 'done', 'position', 'updated_at')
+    list_filter=('done',)
+    search_fields=('title', 'task__title')
