@@ -1,6 +1,6 @@
 /* Super Admin command inbox: company-wide audit trail and approval review. */
 (function(){
-  const ui={data:null,summary:null,loading:false,error:'',tab:'pending',filter:{q:'',category:'all',employeeId:'',from:'',to:''},cursor:'',next:null,seen:false,requestId:0,searchTimer:null,ledgerData:null,ledgerLoading:false,ledgerError:'',ledgerRequestId:0,ledgerStatus:'all'};
+  const ui={data:null,summary:null,loading:false,error:'',tab:'pending',filter:{q:'',category:'all',employeeId:'',from:'',to:''},cursor:'',next:null,seen:false,requestId:0,searchTimer:null,ledgerData:null,ledgerLoading:false,ledgerError:'',ledgerRequestId:0,ledgerStatus:'all',pendingData:null,pendingLoading:false,pendingError:'',pendingRequestId:0};
   const escHtml=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const csrf=()=>decodeURIComponent(document.cookie.split('; ').find(x=>x.startsWith('csrftoken='))?.split('=')[1]||'');
   const at=x=>x?new Date(x).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
@@ -26,11 +26,32 @@
       if(append&&ui.data){data.events=[...ui.data.events,...data.events]}ui.data=data;ui.summary=data.summary;ui.next=data.nextBefore;ui.seen=true;updateBadges();
     }catch(err){ui.error=err.message;}finally{if(req===ui.requestId){ui.loading=false;if(state.tab==='admin_activity')draw();else if(state.tab==='overview')renderSummary();}}
   }
+  async function fetchPending(){
+    if(!isAdmin()||ui.pendingLoading)return;
+    const req=++ui.pendingRequestId;
+    ui.pendingLoading=true;ui.pendingError='';
+    if(state.tab==='admin_activity'&&ui.tab==='pending')draw();
+    try{
+      // Use the unfiltered server queue. Audit history filters never hide approvals.
+      const response=await fetch('/api/admin-activity/',{cache:'no-store',credentials:'same-origin'});
+      const data=await response.json();
+      if(!response.ok)throw Error(data.error||'Could not load pending requests');
+      if(req!==ui.pendingRequestId)return;
+      ui.pendingData=data;
+      ui.summary=data.summary;
+      updateBadges();
+    }catch(err){if(req===ui.pendingRequestId)ui.pendingError=err.message;}
+    finally{if(req===ui.pendingRequestId){
+      ui.pendingLoading=false;
+      if(state.tab==='admin_activity'&&ui.tab==='pending')draw();
+      else if(state.tab==='overview')renderSummary();
+    }}
+  }
   function applyFilter(key,value){if(!(key in ui.filter))return;ui.filter[key]=value;ui.next=null;if(isLedger()){fetchLedger(1);}else{ui.data=null;fetchEvents();}}
   function search(value){clearTimeout(ui.searchTimer);ui.searchTimer=setTimeout(()=>applyFilter('q',value),350);}
   function clearFilters(){ui.filter={q:'',category:'all',employeeId:'',from:'',to:''};ui.ledgerStatus='all';ui.next=null;if(isLedger()){fetchLedger(1);}else{ui.data=null;fetchEvents();}}
-  function show(){if(!isAdmin())return;go('admin_activity');fetchEvents();}
-  function switchTab(which){const next=['pending','history','attendance','leaves','timesheets'].includes(which)?which:'pending';if(next!==ui.tab){ui.tab=next;ui.ledgerData=null;ui.ledgerError='';ui.ledgerRequestId++;ui.ledgerStatus='all';}draw();if(isLedger())fetchLedger(1);else if(!ui.data)fetchEvents();}
+  function show(){if(!isAdmin())return;go('admin_activity');fetchPending();}
+  function switchTab(which){const next=['pending','history','attendance','leaves','timesheets'].includes(which)?which:'pending';if(next!==ui.tab){ui.tab=next;ui.ledgerData=null;ui.ledgerError='';ui.ledgerRequestId++;ui.ledgerStatus='all';}draw();if(isLedger())fetchLedger(1);else if(ui.tab==='pending')fetchPending();else if(!ui.data)fetchEvents();}
   function pendingRow(p,kind){
     const isLeave=kind==='leave',isTime=kind==='timesheet';
     const category=isLeave?'Leave request':isTime?'Timesheet submitted':'Internal sign-off';
@@ -39,7 +60,21 @@
     const user=p.employee||p.requestedBy;
     return `<article class="tf-ac-request"><div class="tf-ac-request-icon">${isLeave?'☼':isTime?'◷':'✓'}</div><div class="tf-ac-request-main"><div class="tf-ac-request-meta"><span class="tf-ac-tag">${category}</span><span>${escHtml(user)}</span></div><h3>${escHtml(title)}</h3><p>${escHtml(info)}</p></div><div class="tf-ac-buttons"><button type="button" class="tf-ac-approve" onclick="TFAdminActivity.review('${kind}','${p.id}','approved')">✓ Approve</button><button type="button" class="tf-ac-decline" onclick="TFAdminActivity.review('${kind}','${p.id}','rejected')">Decline</button></div></article>`;
   }
-  function pending(){const d=ui.data||{},rows=[...(d.leaves||[]).map(p=>pendingRow(p,'leave')),...(d.timesheets||[]).map(p=>pendingRow(p,'timesheet')),...(d.approvals||[]).map(p=>pendingRow(p,'approval'))];return `<div class="tf-ac-pending-head"><h2>Needs your decision</h2><p>Approving or declining updates the employee's real request, records the reviewer and notifies the requester.</p></div><div class="tf-ac-requests">${rows.join('')||`<div class="tf-ac-empty"><span>✓</span><strong>All caught up</strong><p>No outstanding leave, timesheet or internal approval requests.</p></div>`}</div>`;}
+  function pending(){
+    const d=ui.pendingData||{},rows=[
+      ...(d.leaves||[]).map(p=>pendingRow(p,'leave')),
+      ...(d.timesheets||[]).map(p=>pendingRow(p,'timesheet')),
+      ...(d.approvals||[]).map(p=>pendingRow(p,'approval'))
+    ];
+    const totals=d.summary||ui.summary||{};
+    const expected=(totals.pendingLeaves||0)+(totals.pendingTimesheets||0)+(totals.pendingApprovals||0);
+    let fallback='';
+    if(ui.pendingError)fallback=`<div class="tf-ac-error" role="alert">${escHtml(ui.pendingError)} <button type="button" onclick="TFAdminActivity.refresh()">Retry</button></div>`;
+    else if(ui.pendingLoading||!ui.pendingData)fallback='<div class="tf-ac-loading" role="status">Loading pending leave, timesheet and approval requests…</div>';
+    else if(!rows.length&&expected>0)fallback=`<div class="tf-ac-error" role="alert">${expected} pending request(s) were counted but their details could not be displayed. <button type="button" onclick="TFAdminActivity.refresh()">Reload requests</button></div>`;
+    else if(!rows.length)fallback='<div class="tf-ac-empty"><span>✓</span><strong>All caught up</strong><p>No outstanding leave, timesheet or internal approval requests.</p></div>';
+    return `<div class="tf-ac-pending-head"><h2>Needs your decision</h2><p>Approving or declining updates the employee's real request, records the reviewer and notifies the requester.</p></div><div class="tf-ac-requests">${rows.join('')}${fallback}</div>`;
+  }
   function history(){
     const d=ui.data||{};const people=d.employees||[];
     return `<div class="tf-ac-filters"><label class="tf-ac-search">⌕ <input type="search" placeholder="Search actions, employees, projects…" aria-label="Search employee activity" value="${escHtml(ui.filter.q)}" oninput="TFAdminActivity.search(this.value)"></label>
@@ -97,7 +132,7 @@
       body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(statusTime(r.date))}</td><td>${safe(at(r.clockIn))}</td><td>${safe(at(r.clockOut))}</td><td>${safe(r.breakMinutes)} min${r.breakStartedAt?'<small>Live break</small>':''}</td><td>${hours(r.workedMinutes)}</td><td>${safe(r.mode)}</td><td>${pill(r.status)}${r.note?`<small>${safe(r.note)}</small>`:''}</td></tr>`);
     }else if(ui.tab==='leaves'){
       headings=['Employee','Leave type','Period','Days','Status','Submitted','Reviewed by','Reason / decision'];
-      body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(r.type)}</td><td>${safe(statusTime(r.startDate))} – ${safe(statusTime(r.endDate))}</td><td>${Number(r.days)}</td><td>${pill(r.status)}</td><td>${safe(at(r.submittedAt))}</td><td>${safe(r.reviewedBy)}<small>${safe(at(r.reviewedAt))}</small></td><td><div class="tf-ac-ledger-note">${safe(r.reason)}</div>${r.reviewNote?`<small>Decision: ${safe(r.reviewNote)}</small>`:''}</td></tr>`);
+      body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(r.type)}</td><td>${safe(statusTime(r.startDate))} – ${safe(statusTime(r.endDate))}</td><td>${Number(r.days)}</td><td>${pill(r.status)}</td><td>${safe(at(r.submittedAt))}</td><td>${safe(r.reviewedBy)}<small>${safe(at(r.reviewedAt))}</small></td><td><div class="tf-ac-ledger-note">${safe(r.reason)}</div>${r.status==='pending'? `<div class="tf-ac-buttons"><button type="button" class="tf-ac-approve" onclick="TFAdminActivity.review('leave','${r.id}','approved')">✓ Approve</button><button type="button" class="tf-ac-decline" onclick="TFAdminActivity.review('leave','${r.id}','rejected')">Decline</button></div>`:''}${r.reviewNote?`<small>Decision: ${safe(r.reviewNote)}</small>`:''}</td></tr>`);
     }else{
       headings=['Employee','Work date','Client / project','Work details','Hours','Billing','Status','Reviewed by'];
       body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(statusTime(r.date))}</td><td>${safe(r.client)}<small>${safe(r.project)}</small></td><td>${safe(r.task)}<small>${safe(r.description)}</small></td><td>${hours(r.minutes)}</td><td>${r.billable?'Billable':'Non-billable'}</td><td>${pill(r.status)}</td><td>${safe(r.reviewedBy)}<small>${safe(at(r.reviewedAt))}</small></td></tr>`);
@@ -113,7 +148,7 @@
   function view(){const s=ui.summary||{};const total=(s.pendingLeaves||0)+(s.pendingTimesheets||0)+(s.pendingApprovals||0);return `<div class="tf-ac-page">
     <header class="tf-ac-head"><div><span class="tf-ac-overline">SUPER ADMIN / OPERATIONS INTELLIGENCE</span><h1>Employee activity & approvals</h1><p>Review employee requests, attendance, break time, work logs and recorded task activity in one place.</p></div><div class="tf-ac-head-actions"><button type="button" onclick="notificationCenter()">All notifications</button><button type="button" onclick="TFAdminActivity.markAll()">✓ Mark alerts read</button><button type="button" class="tf-ac-refresh" onclick="TFAdminActivity.refresh()">↻ Refresh</button></div></header>
     <div class="tf-ac-stats">${card('Needs approval',total,'Pending team requests','◎','pending')}${card('Currently on shift',s.onShift,(s.onBreak||0)+' on break now','◷','attendance')}${card('Actions today',s.todayActions,'Recorded employee actions','⌁','history')}${card('Unread alerts',s.unread,'New staff updates','♧','history')}</div>
-    <div class="tf-ac-tabs"><button type="button" class="${ui.tab==='pending'?'active':''}" onclick="TFAdminActivity.switchTab('pending')">Approval queue <b>${total}</b></button><button type="button" class="${ui.tab==='history'?'active':''}" onclick="TFAdminActivity.switchTab('history')">All activity</button><button type="button" class="${ui.tab==='attendance'?'active':''}" onclick="TFAdminActivity.switchTab('attendance')">Attendance & breaks</button><button type="button" class="${ui.tab==='leaves'?'active':''}" onclick="TFAdminActivity.switchTab('leaves')">Leave history</button><button type="button" class="${ui.tab==='timesheets'?'active':''}" onclick="TFAdminActivity.switchTab('timesheets')">Timesheets</button><span>${ui.loading?'Updating…':ui.data?'Updated just now':'Ready'}</span></div>
+    <div class="tf-ac-tabs"><button type="button" class="${ui.tab==='pending'?'active':''}" onclick="TFAdminActivity.switchTab('pending')">Approval queue <b>${total}</b></button><button type="button" class="${ui.tab==='history'?'active':''}" onclick="TFAdminActivity.switchTab('history')">All activity</button><button type="button" class="${ui.tab==='attendance'?'active':''}" onclick="TFAdminActivity.switchTab('attendance')">Attendance & breaks</button><button type="button" class="${ui.tab==='leaves'?'active':''}" onclick="TFAdminActivity.switchTab('leaves')">Leave history</button><button type="button" class="${ui.tab==='timesheets'?'active':''}" onclick="TFAdminActivity.switchTab('timesheets')">Timesheets</button><span>${ui.tab==='pending'?(ui.pendingLoading?'Loading requests…':ui.pendingData?'Requests updated':'Ready'):(ui.loading?'Updating…':ui.data?'Updated just now':'Ready')}</span></div>
     ${ui.error?`<div class="tf-ac-error" role="alert">${escHtml(ui.error)} <button onclick="TFAdminActivity.refresh()">Retry</button></div>`:''}
     ${ui.tab==='pending'?pending():ui.tab==='history'?history():ledgerContent()}
     ${ui.loading&&!ui.data?'<div class="tf-ac-loading">Loading team events…</div>':''}
@@ -139,16 +174,16 @@
   async function submitDecision(kind,id,status,note){
     const action=kind==='leave'?'review_leave':kind==='timesheet'?'time_status':'decide_approval';
     if(!['leave','timesheet','approval'].includes(kind))return;
-    try{const res=await fetch('/api/operations/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({action,id,status,note})});const data=await res.json();if(!res.ok)throw Error(data.error||'Could not submit decision');closeModal();await fetchEvents();await summary();
+    try{const res=await fetch('/api/operations/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({action,id,status,note})});const data=await res.json();if(!res.ok)throw Error(data.error||'Could not submit decision');closeModal();ui.pendingData=null;await fetchPending();if(isLedger())await fetchLedger(1);await summary();
     }catch(err){ui.error=err.message;draw();alert(err.message);}
   }
   const previousRender=render;
-  render=function(){previousRender();if(!isAdmin()||state.loading||state.error)return;updateBadges();if(state.tab==='admin_activity'){draw();if(!ui.data&&!ui.loading)queueMicrotask(()=>fetchEvents());}else if(state.tab==='overview')renderSummary();};
+  render=function(){previousRender();if(!isAdmin()||state.loading||state.error)return;updateBadges();if(state.tab==='admin_activity'){draw();if(ui.tab==='pending'&&!ui.pendingData&&!ui.pendingLoading)queueMicrotask(()=>fetchPending());else if(ui.tab==='history'&&!ui.data&&!ui.loading)queueMicrotask(()=>fetchEvents());}else if(state.tab==='overview')renderSummary();};
   window.render=render;
-  window.TFAdminActivity={show,applyFilter,search,clearFilters,switchTab,ledgerStatus,refresh:()=>isLedger()?fetchLedger(1):fetchEvents(),more:()=>isLedger()?fetchLedger((ui.ledgerData?.page||1)+1):fetchEvents(true),markAll,review};
+  window.TFAdminActivity={show,applyFilter,search,clearFilters,switchTab,ledgerStatus,refresh:()=>isLedger()?fetchLedger(1):ui.tab==='pending'?fetchPending():fetchEvents(),more:()=>isLedger()?fetchLedger((ui.ledgerData?.page||1)+1):fetchEvents(true),markAll,review};
   if(location.hash==='#admin_activity'){state.tab='admin_activity';if(!state.loading)render();}
   // In-app polling requires neither costly WebSockets nor a background worker.
-  setInterval(()=>{if(document.visibilityState!=='visible'||!isAdmin())return;summary();if(state.tab==='admin_activity'&&!isLedger()&&!ui.loading&&!ui.next)fetchEvents(false,true);},30000);
+  setInterval(()=>{if(document.visibilityState!=='visible'||!isAdmin())return;summary();if(state.tab==='admin_activity'&&ui.tab==='pending'&&!ui.pendingLoading)fetchPending();else if(state.tab==='admin_activity'&&ui.tab==='history'&&!ui.loading&&!ui.next)fetchEvents(false,true);},30000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isAdmin())summary();});
   if(isAdmin())summary();
 })();
