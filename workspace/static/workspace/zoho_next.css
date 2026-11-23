@@ -354,3 +354,79 @@ html[data-theme='dark'] .tf-client-active{color:#5fd6b2}
   .tf-client-register-actions{width:100%;justify-content:space-between}
   main#mainContent{padding:16px 12px 35px!important}
 }
+
+
+/* Creative aurora theme — shared across Techfinitys CRM views.
+   Decorative gradients are CSS-only, with opaque content surfaces for readability. */
+html[data-theme='light']{
+  --canvas:#eaf1ff;
+  --panel:rgba(255,255,255,.94);
+  --raised:rgba(255,255,255,.90);
+  --sidebar:rgba(255,255,255,.84);
+  --sidebar-2:rgba(255,255,255,.84);
+  --topbar:rgba(255,255,255,.88);
+  --border:rgba(133,153,205,.22);
+  --shadow:0 10px 30px rgba(72,79,145,.10);
+}
+html[data-theme='light'] body{
+  background:#eaf1ff!important;
+}
+html[data-theme='light'] .shell{
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse at 16% 18%,rgba(79,198,255,.56),transparent 40%),
+    radial-gradient(ellipse at 80% 16%,rgba(255,151,196,.48),transparent 41%),
+    radial-gradient(ellipse at 50% 64%,rgba(181,149,255,.37),transparent 50%),
+    radial-gradient(ellipse at 86% 85%,rgba(255,192,150,.45),transparent 44%),
+    linear-gradient(130deg,#e3f6ff 0%,#eef0ff 42%,#ffe7f4 72%,#e5f9ff 100%)!important;
+  background-attachment:fixed!important;
+}
+html[data-theme='light'] .main{
+  background:transparent!important;
+  position:relative;
+  isolation:isolate;
+}
+html[data-theme='light'] .main:before{
+  content:"";
+  position:fixed;
+  z-index:-1;
+  pointer-events:none;
+  inset:0 0 0 228px;
+  opacity:.65;
+  background:
+    radial-gradient(circle,rgba(255,255,255,.88) 1px,transparent 1.6px) 96% 9%/18px 18px no-repeat,
+    radial-gradient(ellipse at 65% 3%,rgba(255,255,255,.58),transparent 35%);
+}
+html[data-theme='light'] .sidebar{
+  background:rgba(255,255,255,.79)!important;
+  border-right:1px solid rgba(255,255,255,.70)!important;
+  box-shadow:8px 0 30px rgba(72,104,171,.07)!important;
+  backdrop-filter:blur(20px)!important;
+  -webkit-backdrop-filter:blur(20px)!important;
+}
+html[data-theme='light'] .topbar,
+html[data-theme='light'] .demo-bar{
+  background:rgba(255,255,255,.79)!important;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+html[data-theme='light'] main#mainContent{
+  background:transparent!important;
+}
+html[data-theme='light'] main#mainContent :is(.card,.panel,.widget,.stat-card,.metric-card,.tf-card,.tf-project-card,.tf-dashboard-card){
+  background:rgba(255,255,255,.94);
+  border-color:rgba(255,255,255,.83);
+  box-shadow:0 10px 26px rgba(73,84,147,.09);
+}
+html[data-theme='light'] main#mainContent :is(input,select,textarea){
+  background-color:rgba(255,255,255,.97);
+}
+html[data-theme='light'] main#mainContent :is(table, .table, .data-table){
+  background-color:rgba(255,255,255,.94);
+}
+@media(max-width:730px){
+  html[data-theme='light'] .main:before{inset:0 0 0 64px}
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-theme='light'] .shell{background-attachment:scroll!important}
+}
