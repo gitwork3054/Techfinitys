@@ -8,7 +8,7 @@
     view: 'list', sort: 'dueAt', desc: false, page: 1, groupBy: 'taskList',
     drawer: false, selected: new Set(), collapsed: new Set(),
     filters: { status: 'open', search: '', logic: 'all' },
-    homeTaskQuery: '', homeTaskStatus: 'all', homeTaskLimit: 15,
+    homeTaskQuery: '', homeTaskStatus: 'all', homeTaskLimit: 15, homeTaskSort: 'recommended', homeTaskDesc: false, phaseStatusFilter: 'all',
     issuesStatus: 'open', feedProject: '', taskProject: '',
     detailTaskId: '', detailTab: 'overview', detailData: null, detailLoading: false, detailBusy: false, ganttOffset: 0, quickBusy: false,
   };
@@ -182,7 +182,7 @@
       case 'recurrence':return value==='yes'?!!t.recurrence:!t.recurrence;
       case 'timespan':{const d=iso(t.dueAt);const day=today();if(!d)return false;
         if(value==='overdue')return t.status!=='completed'&&d<day;
-        if(value==='today')return d===day;
+        if(value==='today')return t.status!=='completed'&&(d===day||iso(t.startAt)===day);
         const next=new Date(day+'T12:00:00');next.setDate(next.getDate()+(value==='week'?7:30));
         return d>=day&&d<=next.toISOString().slice(0,10);
       }
@@ -543,18 +543,26 @@
   function homeTasks(){
     const allowed=state.tasks.filter(t=>!isEmployee()||isMyTask(t));
     const query=String(ui.homeTaskQuery||'').toLowerCase().trim();
-    const statuses=[['all','All statuses'],['open','Open'],['in_progress','In progress'],['review','In review'],['blocked','Blocked'],['completed','Completed'],['overdue','Overdue']];
+    const statuses=[['all','All statuses'],['open','Open'],['in_progress','In progress'],['review','In review'],['blocked','Blocked'],['completed','Completed'],['overdue','Overdue'],['today','Due today']];
     const list=allowed.filter(t=>{
       if(query&&![t.title,t.description,t.code,t.projectName,t.clientName,t.assignedName].some(v=>String(v||'').toLowerCase().includes(query)))return false;
       if(ui.homeTaskStatus==='all')return true;
       if(ui.homeTaskStatus==='overdue')return t.status!=='completed'&&!!iso(t.dueAt)&&iso(t.dueAt)<today();
+      if(ui.homeTaskStatus==='today')return t.status!=='completed'&&(iso(t.dueAt)===today()||iso(t.startAt)===today());
       if(ui.homeTaskStatus==='open')return t.status!=='completed';
       return t.status===ui.homeTaskStatus;
-    }).sort((a,b)=>Number(a.status==='completed')-Number(b.status==='completed') || (a.dueAt||'9999').localeCompare(b.dueAt||'9999') || a.title.localeCompare(b.title));
+    }).sort((a,b)=>{
+      if(ui.homeTaskSort==='recommended')return Number(a.status==='completed')-Number(b.status==='completed') || (a.dueAt||'9999').localeCompare(b.dueAt||'9999') || a.title.localeCompare(b.title);
+      const key=ui.homeTaskSort;
+      const col=t=>key==='title'?String(t.title||'').toLowerCase():key==='owner'?String(teamName(t)).toLowerCase():key==='priority'?({low:1,normal:2,high:3,urgent:4})[t.priority]||0:key==='status'?String(t.status||''):t.dueAt||'9999';
+      const left=col(a),right=col(b);
+      return (typeof left==='number'?left-right:String(left).localeCompare(String(right)))*(ui.homeTaskDesc?-1:1);
+    });
     const visible=list.slice(0,ui.homeTaskLimit);
+    const sortHead=(key,label)=>`<button type="button" class="tf-home-task-sort ${ui.homeTaskSort===key?'active':''}" aria-label="Sort by ${safe(label)}" onclick="TFPlus.sortHomeTasks('${key}')">${safe(label)} <span aria-hidden="true">${ui.homeTaskSort===key?(ui.homeTaskDesc?'↓':'↑'):'↕'}</span></button>`;
     const rows=visible.map(t=>{
       const overdue=t.status!=='completed'&&!!iso(t.dueAt)&&iso(t.dueAt)<today();
-      return `<button type="button" class="tf-home-task-row" aria-label="Open task ${safe(t.title)}" onclick="TFPlus.taskEditor('${t.id}')">
+      return `<button type="button" class="tf-home-task-row" aria-label="Open task ${safe(t.title)}" onclick="TFPlus.openTaskDrawer('${t.id}')">
         <span class="tf-home-task-main"><span class="tf-home-task-name">${safe(t.title)}</span><small>${safe(t.projectName||t.clientName)} · ${safe(t.code||'Task')}</small></span>
         <span class="tf-home-task-owner">${safe(teamName(t))}</span>
         <span class="tf-home-task-priority">${statusPill(t.priority)}</span>
@@ -562,9 +570,9 @@
         <time class="${overdue?'tf-overdue':''}">${date(t.dueAt)}</time><span class="tf-home-task-open" aria-hidden="true">↗</span></button>`;
     }).join('');
     return `<section class="tf-home-tasks tf-pane" aria-label="All tasks" id="tfHomeTasks">
-      <header class="tf-home-tasks-head"><div><span class="tf-overline">MY WORKSPACE / TASK REGISTER</span><h2>${isEmployee()?'My assigned tasks':'All tasks'} <span>${fmtCount(list.length)}</span></h2><p>Every ${isEmployee()?'assigned':'accessible'} task in one place. Select a row to view details${isEmployee()?' or update its status':''}.</p></div><button type="button" class="tf-btn" onclick="TFPlus.viewTasks()">View task workspace ↗</button></header>
+      <header class="tf-home-tasks-head"><div><span class="tf-overline">MY WORKSPACE / TASK REGISTER</span><h2><button type="button" class="tf-home-task-heading" onclick="TFPlus.dashboardDrilldown('all_tasks')" title="Open the full task workspace">${isEmployee()?'My assigned tasks':'All tasks'} <span>${fmtCount(list.length)}</span><i aria-hidden="true">↗</i></button></h2><p>Every ${isEmployee()?'assigned':'accessible'} task in one place. Select a row to view details${isEmployee()?' or update its status':''}.</p></div><button type="button" class="tf-btn" onclick="TFPlus.viewTasks()">View task workspace ↗</button></header>
       <div class="tf-home-tasks-controls"><label class="tf-field-search"><span>⌕</span><input id="tfHomeTaskSearch" type="search" autocomplete="off" aria-label="Search home tasks" placeholder="Search tasks or projects…" value="${safe(ui.homeTaskQuery)}" oninput="TFPlus.homeTaskFilter('query',this.value)"></label><select aria-label="Filter home tasks by status" onchange="TFPlus.homeTaskFilter('status',this.value)">${statuses.map(([v,label])=>`<option value="${v}" ${ui.homeTaskStatus===v?'selected':''}>${label}</option>`).join('')}</select></div>
-      <div class="tf-home-tasks-table"><div class="tf-home-tasks-thead"><span>Task / Project</span><span>Owner</span><span>Priority</span><span>Status</span><span>Due</span><span></span></div>${rows||empty('No matching tasks',allowed.length?'Try a different search or status filter.':'Assigned tasks will appear here as soon as work is allocated.')}</div>
+      <div class="tf-home-tasks-table"><div class="tf-home-tasks-thead">${sortHead('title','Task / Project')}${sortHead('owner','Owner')}${sortHead('priority','Priority')}${sortHead('status','Status')}${sortHead('dueAt','Due')}<span></span></div>${rows||empty('No matching tasks',allowed.length?'Try a different search or status filter.':'Assigned tasks will appear here as soon as work is allocated.')}</div>
       <footer class="tf-home-tasks-footer"><span>Showing ${fmtCount(visible.length)} of ${fmtCount(list.length)} tasks</span>${list.length>visible.length?button('Show more tasks', 'TFPlus.moreHomeTasks()',''):''}</footer>
     </section>`;
   }
@@ -580,6 +588,64 @@
     }
   }
   function moreHomeTasks(){ui.homeTaskLimit+=15;render();}
+  function sortHomeTasks(key){
+    if(!['title','owner','priority','status','dueAt'].includes(key))return;
+    ui.homeTaskDesc=ui.homeTaskSort===key?!ui.homeTaskDesc:false;
+    ui.homeTaskSort=key;ui.homeTaskLimit=15;render();
+  }
+  // Dashboard navigation always uses the same role-aware project/task screens.
+  // Existing API permissions remain authoritative; the UI never requests extra data.
+  function dashboardDrilldown(kind,projectId='',memberId=''){
+    const target=projectId&&projectBy(projectId)?projectId:'';
+    const taskKinds=['all_tasks','open_tasks','completed_tasks','my_open_tasks','due_today','overdue_tasks','member_tasks','status_todo','status_in_progress','status_review','status_blocked'];
+    if(taskKinds.includes(kind)){
+      ui.filters={status:'all',search:'',logic:'all'};
+      if(['open_tasks','my_open_tasks','due_today','overdue_tasks'].includes(kind))ui.filters.status='open';
+      if(kind==='completed_tasks')ui.filters.status='completed';
+      if(kind==='my_open_tasks'&&!isEmployee())ui.filters.teamMember=String(roleId());
+      if(kind==='member_tasks'&&memberId)ui.filters.teamMember=String(memberId);
+      if(kind==='due_today')ui.filters.timespan='today';
+      if(kind==='overdue_tasks')ui.filters.timespan='overdue';
+      if(kind.startsWith('status_'))ui.filters.status=kind.slice(7);
+      ui.page=1;ui.view='list';ui.drawer=false;ui.selected.clear();
+      if(target)openProject(target,'tasks');
+      else {ui.project='';state.tab='tasks';render();}
+      return;
+    }
+    if(kind==='active_projects'||kind==='projects'){
+      ui.project='';ui.projectStatus=kind==='active_projects'?'active':'all';ui.projectPage=1;
+      state.tab='projects';render();return;
+    }
+    if(kind==='project_progress'){
+      if(target){ui.filters={status:'all',search:'',logic:'all'};ui.page=1;ui.view='list';openProject(target,'tasks');}
+      else {ui.project='';state.tab='projects';render();}
+      return;
+    }
+    if(kind==='open_issues'){
+      if(target)openProject(target,'issues');
+      else if((menus[state.ctx?.role]||[]).includes('issues')){state.tab='issues';render();}
+      else {ui.project='';state.tab='projects';render();}
+      return;
+    }
+    if(kind==='phases'||kind==='closed_phases'){
+      if(target&&isManager()){openProject(target,'phases');return;}
+      if((menus[state.ctx?.role]||[]).includes('phases')){
+        ui.phaseStatusFilter=kind==='closed_phases'?'completed':'all';state.tab='phases';render();
+      }else {ui.project='';state.tab='projects';render();}
+      return;
+    }
+    if(kind==='pending_approvals'){
+      if(target&&!isEmployee()){openProject(target,'approvals');return;}
+      if((menus[state.ctx?.role]||[]).includes('approvals')){state.tab='approvals';render();return;}
+      return dashboardDrilldown('all_tasks',target);
+    }
+    if(kind==='hours_logged'){if(target&&isManager()){openProject(target,'timelogs');return;}
+      if((menus[state.ctx?.role]||[]).includes('timesheets')){state.tab='timesheets';render();return;}}
+    const section={team_work:'tasks',activity:'audit',calendar:'calendar',updates:'updates'}[kind];
+    if(section){const allowed=menus[state.ctx?.role]||[];state.tab=allowed.includes(section)?section:allowed.includes('updates')?'updates':'overview';render();}
+  }
+  function widgetDrilldown(key){return ({today:'due_today',overdue:'overdue_tasks',task_chart:'all_tasks',team:'team_work',issues:'open_issues',progress:'project_progress',activity:'activity',approvals:'pending_approvals',timesheets:'hours_logged',projects:'active_projects',calendar:'calendar',updates:'updates'})[key]||'';}
+
   function dashboard(scope='global',project=null){
     const selected=widgetList(scope),global=scope==='global';
     const tasksFor=(project?projectTasks(project.id):state.tasks).filter(t=>!isEmployee()||isMyTask(t));
@@ -594,10 +660,11 @@
       `<div class="tf-dashboard-header"><div><strong>Project dashboard</strong><small>Widgets reflect work for ${safe(current)}</small></div><div>${actions}</div></div>`;
     return `${title}${global?homeTasks():''}<div class="tf-widgets">${selected.map((key,index)=>{
       const content=renderWidget(key,project,{rows,tasksFor,done,overdue,issues,time,approvals});
-      return `<section class="tf-widget tf-widget-${key}"><div class="tf-widget-header"><strong>${safe(widgetNames[key]||key)}</strong>${isManager()?`<div class="tf-widget-controls"><button title="Move widget left" onclick="TFPlus.moveWidget('${scope}',${index},-1)">←</button><button title="Move widget right" onclick="TFPlus.moveWidget('${scope}',${index},1)">→</button><button title="Customize dashboard" onclick="TFPlus.configureWidgets('${scope}')">⋯</button></div>`:''}</div>${content}</section>`;
+      const drill=widgetDrilldown(key),target=safe(project?.id||'');
+      return `<section class="tf-widget tf-widget-${key}"><div class="tf-widget-header"><strong>${safe(widgetNames[key]||key)}</strong><div class="tf-widget-header-actions">${drill?`<button type="button" class="tf-widget-view-all" aria-label="View all ${safe(widgetNames[key]||key)}" onclick="TFPlus.dashboardDrilldown('${drill}','${target}')">View all ↗</button>`:''}${isManager()?`<div class="tf-widget-controls"><button title="Move widget left" onclick="TFPlus.moveWidget('${scope}',${index},-1)">←</button><button title="Move widget right" onclick="TFPlus.moveWidget('${scope}',${index},1)">→</button><button title="Customize dashboard" onclick="TFPlus.configureWidgets('${scope}')">⋯</button></div>`:''}</div></div>${content}</section>`;
     }).join('')}</div>`;
   }
-  const taskCompact=(tasks,limit=7)=>tasks.slice(0,limit).map(t=>`<button class="tf-compact-row" onclick="TFPlus.taskEditor('${t.id}')"><span class="tf-mini-check">☑</span><span><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)} · ${safe(teamName(t))}</small></span><time class="${iso(t.dueAt)<today()&&t.status!=='completed'?'tf-overdue':''}">${date(t.dueAt||t.startAt)}</time></button>`).join('')||empty('Nothing pending','There is no work in this category.');
+  const taskCompact=(tasks,limit=7,kind='all_tasks',projectId='')=>tasks.slice(0,limit).map(t=>`<button class="tf-compact-row" onclick="TFPlus.openTaskDrawer('${t.id}')"><span class="tf-mini-check">☑</span><span><strong>${safe(t.title)}</strong><small>${safe(t.projectName||t.clientName)} · ${safe(teamName(t))}</small></span><time class="${iso(t.dueAt)<today()&&t.status!=='completed'?'tf-overdue':''}">${date(t.dueAt||t.startAt)}</time></button>`).join('')||`<button type="button" class="tf-widget-empty-action" onclick="TFPlus.dashboardDrilldown('${kind}','${safe(projectId)}')" aria-label="Open ${kind==='due_today'?'today’s tasks':'overdue tasks'}">${empty('Nothing pending','There is no work in this category.')}<span>Open task list ↗</span></button>`;
   function renderWidget(key,project,data){
     const {rows,tasksFor,done,overdue,issues,time,approvals}=data;
     const stats=taskStat(tasksFor);
@@ -605,17 +672,17 @@
     const activeProjects=project?[project]:state.projects.filter(p=>p.status==='active');
     if(key==='stats'){
       const metrics=isEmployee()?project?[
-        ['My open tasks',rows.length,'Assigned in this project'],['Completed',done.length,'My finished tasks'],['Project progress',`${stats.percent}%`,'My task completion']]:[
-        ['My open tasks',rows.length,'Awaiting completion'],['Completed',done.length,'My finished tasks'],
-        ['Due today',rows.filter(t=>iso(t.dueAt)===today()).length,'My deadlines today'],['Overdue',rows.filter(t=>iso(t.dueAt)&&iso(t.dueAt)<today()).length,'My overdue tasks']]:project?[
-        ['Open tasks',rows.length,'Tasks in progress'],['Completed',done.length,'Finished work'],['Project progress',`${stats.percent}%`,'Completion rate'],
-        ['Active issues',openIssues.length,'Need attention'],['Phases',arr('milestones').filter(m=>m.projectId===project.id).length,'Delivery stages'],['Hours logged',hours(minutes(time)),'Recorded delivery']]:
-        [['Open tasks',rows.length,'Across visible clients'],['Active projects',activeProjects.length,'Delivery in progress'],['Completed tasks',done.length,'Finished work'],
-        ['My open tasks',rows.filter(t=>String(t.assignedTo)===String(roleId())).length,'Assigned to you'],['Closed phases',arr('milestones').filter(m=>m.status==='completed').length,'Completed milestones'],['Open issues',openIssues.length,'Awaiting resolution']];
-      return `<div class="tf-metric-grid">${metrics.map(([name,count,description])=>`<div class="tf-metric"><span>${safe(name)}</span><strong>${safe(count)}</strong><small>${safe(description)}</small></div>`).join('')}</div>`;
+        ['My open tasks',rows.length,'Assigned in this project','my_open_tasks'],['Completed',done.length,'My finished tasks','completed_tasks'],['Project progress',`${stats.percent}%`,'My task completion','project_progress']]:[
+        ['My open tasks',rows.length,'Awaiting completion','my_open_tasks'],['Completed',done.length,'My finished tasks','completed_tasks'],
+        ['Due today',rows.filter(t=>iso(t.dueAt)===today()||iso(t.startAt)===today()).length,'My deadlines today','due_today'],['Overdue',rows.filter(t=>iso(t.dueAt)&&iso(t.dueAt)<today()).length,'My overdue tasks','overdue_tasks']]:project?[
+        ['Open tasks',rows.length,'Tasks in progress','open_tasks'],['Completed',done.length,'Finished work','completed_tasks'],['Project progress',`${stats.percent}%`,'Completion rate','project_progress'],
+        ['Active issues',openIssues.length,'Need attention','open_issues'],['Phases',arr('milestones').filter(m=>m.projectId===project.id).length,'Delivery stages','phases'],['Hours logged',hours(minutes(time)),'Recorded delivery','hours_logged']]:
+        [['Open tasks',rows.length,'Across visible clients','open_tasks'],['Active projects',activeProjects.length,'Delivery in progress','active_projects'],['Completed tasks',done.length,'Finished work','completed_tasks'],
+        ['My open tasks',rows.filter(t=>isMyTask(t)).length,'Assigned to you','my_open_tasks'],['Closed phases',arr('milestones').filter(m=>m.status==='completed').length,'Completed milestones','closed_phases'],['Open issues',openIssues.length,'Awaiting resolution','open_issues']];
+      return `<div class="tf-metric-grid">${metrics.map(([name,count,description,kind])=>`<button type="button" class="tf-metric tf-metric-link" aria-label="Open ${safe(name)}" onclick="TFPlus.dashboardDrilldown('${kind}','${safe(project?.id||'')}')"><span>${safe(name)}</span><strong>${safe(count)}</strong><small>${safe(description)}</small><i class="tf-metric-go" aria-hidden="true">↗</i></button>`).join('')}</div>`;
     }
-    if(key==='today')return `<div class="tf-widget-content">${taskCompact(rows.filter(t=>iso(t.dueAt)===today()||iso(t.startAt)===today()),8)}</div>`;
-    if(key==='overdue')return `<div class="tf-widget-content">${taskCompact(overdue,8)}</div>`;
+    if(key==='today')return `<div class="tf-widget-content">${taskCompact(rows.filter(t=>iso(t.dueAt)===today()||iso(t.startAt)===today()),8,'due_today',project?.id||'')}</div>`;
+    if(key==='overdue')return `<div class="tf-widget-content">${taskCompact(overdue,8,'overdue_tasks',project?.id||'')}</div>`;
     if(key==='task_chart'){
       const open=tasksFor.filter(t=>t.status==='todo').length,progress=tasksFor.filter(t=>t.status==='in_progress').length,
         review=tasksFor.filter(t=>t.status==='review').length,blocked=tasksFor.filter(t=>t.status==='blocked').length;
@@ -626,12 +693,12 @@
       const taskMembers=project?arr('projectTeams').filter(x=>x.projectId===project.id).map(x=>x.memberId):state.members.filter(m=>m.role!=='client').map(x=>x.id);
       return `<div class="tf-widget-content">${state.members.filter(x=>taskMembers.includes(x.id)).slice(0,8).map(m=>{
         const x=tasksFor.filter(t=>t.assignedTo===m.id),over=x.filter(t=>t.status!=='completed'&&iso(t.dueAt)&&iso(t.dueAt)<today());
-        return `<div class="tf-team-row"><i>${initials(m.name)}</i><strong>${safe(m.name)}</strong><span>${x.length} tasks</span><span class="${over.length?'tf-overdue':''}">${over.length} overdue</span></div>`;
+        return `<button type="button" class="tf-team-row tf-row-link" onclick="TFPlus.dashboardDrilldown('member_tasks','${safe(project?.id||'')}','${safe(m.id)}')"><i>${initials(m.name)}</i><strong>${safe(m.name)}</strong><span>${x.length} tasks</span><span class="${over.length?'tf-overdue':''}">${over.length} overdue</span></button>`;
       }).join('')||empty('Project team not assigned','Add people under the Users tab.')}</div>`;
     }
     if(key==='issues')return `<div class="tf-widget-content">${issues.filter(i=>!['resolved','closed'].includes(i.status)).slice(0,7).map(i=>`<button class="tf-compact-row" onclick="${project?`TFPlus.switchProjectTab('issues')`:`go('issues')`}"><span class="tf-mini-issue">!</span><span><strong>${safe(i.title)}</strong><small>${safe(i.projectName)} · ${safe(i.assignedName||'Unassigned')}</small></span>${statusPill(i.priority)}</button>`).join('')||empty('No open issues','Everything looks clear.')}</div>`;
     if(key==='progress')return `<div class="tf-widget-content">${activeProjects.slice(0,8).map(p=>`<button class="tf-progress-row" onclick="TFPlus.openProject('${p.id}')"><span>${safe(p.title)}</span><b>${p.progress}%</b>${percentBar(p.progress)}</button>`).join('')||empty('No active projects')}</div>`;
-    if(key==='activity')return `<div class="tf-widget-content">${state.activities.filter(a=>!project||a.clientName===project.clientName).slice(0,7).map(a=>`<div class="tf-activity"><i>${initials(a.actorName)}</i><div><strong>${safe(a.action)}</strong><small>${safe(a.actorName)} · ${fmt(a.createdAt)}</small></div></div>`).join('')||empty('No recent activity')}</div>`;
+    if(key==='activity')return `<div class="tf-widget-content">${state.activities.filter(a=>!project||a.clientName===project.clientName).slice(0,7).map(a=>`<button type="button" class="tf-activity tf-row-link" onclick="TFPlus.dashboardDrilldown('activity','${safe(project?.id||'')}')"><i>${initials(a.actorName)}</i><div><strong>${safe(a.action)}</strong><small>${safe(a.actorName)} · ${fmt(a.createdAt)}</small></div></button>`).join('')||empty('No recent activity')}</div>`;
     if(key==='approvals')return `<div class="tf-widget-content">${approvals.filter(a=>a.status==='pending').slice(0,6).map(a=>`<button class="tf-compact-row" onclick="${project?`TFPlus.switchProjectTab('approvals')`:`go('approvals')`}"><span class="tf-mini-check">◎</span><span><strong>${safe(a.title)}</strong><small>${safe(a.clientName)} · ${safe(a.requestedBy)}</small></span>${statusPill(a.status)}</button>`).join('')||empty('Nothing to approve')}</div>`;
     if(key==='timesheets'){
       const billable=time.filter(t=>t.billable),pending=time.filter(t=>t.status==='submitted');
@@ -642,8 +709,8 @@
       const links=isStaff()?['projects','tasks','issues','phases','timesheets','approvals']:['projects','tasks','approvals','tickets','files','calendar'];
       return `<div class="tf-shortcuts">${links.map(k=>`<button onclick="go('${k}')">${safe(labels[k]||k)} <span>↗</span></button>`).join('')}</div>`;
     }
-    if(key==='calendar')return `<div class="tf-widget-content">${state.events.filter(e=>iso(e.startAt)>=today()&&(!project||e.clientId===project.clientId)).slice(0,6).map(e=>`<div class="tf-compact-row"><span class="tf-mini-check">▣</span><span><strong>${safe(e.title)}</strong><small>${safe(e.clientName)}</small></span><time>${date(e.startAt)}</time></div>`).join('')||empty('No upcoming events')}</div>`;
-    if(key==='updates')return `<div class="tf-widget-content">${state.updates.filter(x=>!project||x.clientId===project.clientId).slice(0,6).map(x=>`<div class="tf-compact-row"><span class="tf-mini-check">↻</span><span><strong>${safe(x.title)}</strong><small>${safe(x.authorName)} · ${safe((x.body||'').slice(0,80))}</small></span><time>${date(x.createdAt)}</time></div>`).join('')||empty('No updates')}</div>`;
+    if(key==='calendar')return `<div class="tf-widget-content">${state.events.filter(e=>iso(e.startAt)>=today()&&(!project||e.clientId===project.clientId)).slice(0,6).map(e=>`<button type="button" class="tf-compact-row" onclick="TFPlus.dashboardDrilldown('calendar','${safe(project?.id||'')}')"><span class="tf-mini-check">▣</span><span><strong>${safe(e.title)}</strong><small>${safe(e.clientName)}</small></span><time>${date(e.startAt)}</time></button>`).join('')||empty('No upcoming events')}</div>`;
+    if(key==='updates')return `<div class="tf-widget-content">${state.updates.filter(x=>!project||x.clientId===project.clientId).slice(0,6).map(x=>`<button type="button" class="tf-compact-row" onclick="TFPlus.dashboardDrilldown('updates','${safe(project?.id||'')}')"><span class="tf-mini-check">↻</span><span><strong>${safe(x.title)}</strong><small>${safe(x.authorName)} · ${safe((x.body||'').slice(0,80))}</small></span><time>${date(x.createdAt)}</time></button>`).join('')||empty('No updates')}</div>`;
     return empty('Widget unavailable');
   }
   function configureWidgets(scope){
@@ -817,9 +884,10 @@
   }
 
   function globalPhases(){
+    const visible=arr('milestones').filter(m=>ui.phaseStatusFilter==='all'||m.status===ui.phaseStatusFilter);
     return `${header('Phases','Milestones and delivery checkpoints across the project portfolio.')}
-      <section class="tf-pane">${boxTitle('Phases',isStaff()&&state.projects.length?button('＋ Add phase',`TFPlus.phaseModal('${state.projects[0].id}')`,'primary'):'')}
-      <div class="tf-table-scroll"><table class="tf-grid"><thead><tr><th>Phase</th><th>Project</th><th>Owner</th><th>Target date</th><th>Status</th></tr></thead><tbody>${arr('milestones').map(m=>`<tr><td><strong>${safe(m.title)}</strong></td><td><button onclick="TFPlus.openProject('${m.projectId}','phases')">${safe(m.projectName)}</button></td><td>${safe(m.ownerName||'Unassigned')}</td><td>${date(m.dueDate)}</td><td>${statusPill(m.status)}</td></tr>`).join('')||`<tr><td colspan="5">${empty('No phases yet')}</td></tr>`}</tbody></table></div></section>`;
+      <section class="tf-pane">${boxTitle('Phases',`${isStaff()&&state.projects.length?button('＋ Add phase',`TFPlus.phaseModal('${state.projects[0].id}')`,'primary'):''}<select aria-label="Filter phase status" onchange="TFPlus.setPhaseStatusFilter(this.value)"><option value="all" ${ui.phaseStatusFilter==='all'?'selected':''}>All phases</option><option value="completed" ${ui.phaseStatusFilter==='completed'?'selected':''}>Completed</option><option value="planned" ${ui.phaseStatusFilter==='planned'?'selected':''}>Planned</option><option value="active" ${ui.phaseStatusFilter==='active'?'selected':''}>Active</option></select>`)}
+      <div class="tf-table-scroll"><table class="tf-grid"><thead><tr><th>Phase</th><th>Project</th><th>Owner</th><th>Target date</th><th>Status</th></tr></thead><tbody>${visible.map(m=>`<tr><td><strong>${safe(m.title)}</strong></td><td><button onclick="TFPlus.openProject('${m.projectId}','phases')">${safe(m.projectName)}</button></td><td>${safe(m.ownerName||'Unassigned')}</td><td>${date(m.dueDate)}</td><td>${statusPill(m.status)}</td></tr>`).join('')||`<tr><td colspan="5">${empty('No phases yet')}</td></tr>`}</tbody></table></div></section>`;
   }
   function globalDiscussions(){
     const projects=state.projects;
@@ -855,10 +923,10 @@
     openTaskDrawer,closeTaskDrawer,taskDetailTab,addTaskComment,addChecklist,toggleChecklist,deleteChecklist,updateDependency,duplicateTask,
     quickTaskKey,quickTaskButton,openTaskDatePicker,saveTaskDate,
     changeFilter,resetFilters,openFilters(){ui.drawer=true;render()},closeFilters(){ui.drawer=false;render()},applyFilters,
-    saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,homeTaskFilter,moreHomeTasks,teamModal,removeTeamMember,
+    saveTaskView,loadTaskView,smartSuggestions,configureWidgets,moveWidget,homeTaskFilter,moreHomeTasks,sortHomeTasks,dashboardDrilldown,setPhaseStatusFilter(value){ui.phaseStatusFilter=value;render()},teamModal,removeTeamMember,
     phaseModal,phaseStatus,issueModal,issueStatus,setIssueFilter(v){ui.issuesStatus=v;render()},
     feedModal,documentModal,logTimeModal,timeStatus,approvalModal,decideApproval,
-    viewTasks(projectId=''){ui.project=projectId;ui.projectTab='tasks';state.tab=projectId?'projects':'tasks';ui.page=1;if(isEmployee())ui.filters.status='all';render()}
+    viewTasks(projectId=''){dashboardDrilldown('all_tasks',projectId)}
   };
   window.TFPlus=publicAPI;
   Object.assign(labels,{issues:'Issues',phases:'Phases',collaboration:'Collaboration',files:'Documents & assets',projects:'Projects',tasks:'Tasks'});
