@@ -66,8 +66,10 @@
       ...(d.timesheets||[]).map(p=>pendingRow(p,'timesheet')),
       ...(d.approvals||[]).map(p=>pendingRow(p,'approval'))
     ];
-    const totals=d.summary||ui.summary||{};
-    const expected=(totals.pendingLeaves||0)+(totals.pendingTimesheets||0)+(totals.pendingApprovals||0);
+    const totals=d.summary||{};
+    const latest=ui.summary||{};
+    const count=s=>(s.pendingLeaves||0)+(s.pendingTimesheets||0)+(s.pendingApprovals||0);
+    const expected=Math.max(count(totals),count(latest));
     let fallback='';
     if(ui.pendingError)fallback=`<div class="tf-ac-error" role="alert">${escHtml(ui.pendingError)} <button type="button" onclick="TFAdminActivity.refresh()">Retry</button></div>`;
     else if(ui.pendingLoading||!ui.pendingData)fallback='<div class="tf-ac-loading" role="status">Loading pending leave, timesheet and approval requests…</div>';
@@ -178,7 +180,7 @@
     }catch(err){ui.error=err.message;draw();alert(err.message);}
   }
   const previousRender=render;
-  render=function(){previousRender();if(!isAdmin()||state.loading||state.error)return;updateBadges();if(state.tab==='admin_activity'){draw();if(ui.tab==='pending'&&!ui.pendingData&&!ui.pendingLoading)queueMicrotask(()=>fetchPending());else if(ui.tab==='history'&&!ui.data&&!ui.loading)queueMicrotask(()=>fetchEvents());}else if(state.tab==='overview')renderSummary();};
+  render=function(){previousRender();if(!isAdmin()||state.loading||state.error)return;updateBadges();if(state.tab==='admin_activity'){draw();if(ui.tab==='pending'&&!ui.pendingData&&!ui.pendingLoading&&!ui.pendingError)queueMicrotask(()=>fetchPending());else if(ui.tab==='history'&&!ui.data&&!ui.loading)queueMicrotask(()=>fetchEvents());}else if(state.tab==='overview')renderSummary();};
   window.render=render;
   window.TFAdminActivity={show,applyFilter,search,clearFilters,switchTab,ledgerStatus,refresh:()=>isLedger()?fetchLedger(1):ui.tab==='pending'?fetchPending():fetchEvents(),more:()=>isLedger()?fetchLedger((ui.ledgerData?.page||1)+1):fetchEvents(true),markAll,review};
   if(location.hash==='#admin_activity'){state.tab='admin_activity';if(!state.loading)render();}
