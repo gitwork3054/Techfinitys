@@ -487,3 +487,123 @@ html[data-theme='light'] main#mainContent :is(.tf-pane,.tf-widget,.dash-tile,.tf
     background:rgba(255,255,255,.92)!important;
   }
 }
+
+
+/* Aurora Glass v3: luminous edges in both themes, midnight aurora in dark mode.
+   Shadows create the edge glow without pseudo-elements that could block clicks. */
+html[data-theme='light']{
+  --glass-surface:rgba(255,255,255,.62);
+  --glass-stroke:rgba(255,255,255,.92);
+  --glass-glow:0 0 0 1px rgba(255,255,255,.72) inset,
+    0 0 17px rgba(75,185,255,.30),0 0 33px rgba(247,128,218,.24),
+    0 14px 34px rgba(66,102,169,.16);
+}
+html[data-theme='dark']{
+  --canvas:#090f25;
+  --panel:rgba(22,31,64,.69);
+  --raised:rgba(36,47,85,.64);
+  --field:rgba(13,23,48,.80);
+  --sidebar:rgba(12,21,45,.78);
+  --sidebar-2:rgba(12,21,45,.78);
+  --topbar:rgba(13,22,47,.76);
+  --text:#eff5ff;
+  --muted:#b6c6e3;
+  --border:rgba(158,189,255,.20);
+  --accent:#80baff;
+  --accent-soft:rgba(72,135,242,.21);
+  --shadow:0 15px 40px rgba(0,0,0,.27),0 0 20px rgba(75,142,255,.17);
+  --glass-surface:rgba(19,29,63,.58);
+  --glass-stroke:rgba(145,189,255,.47);
+  --glass-glow:0 0 0 1px rgba(199,223,255,.14) inset,
+    0 0 19px rgba(31,190,255,.29),0 0 38px rgba(168,84,255,.22),
+    0 15px 36px rgba(0,0,0,.34);
+}
+html[data-theme='dark'] body{background:#080f25!important;color:var(--text)}
+html[data-theme='dark'] .shell{
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse 45% 48% at 11% 17%,rgba(0,174,241,.37),transparent 100%),
+    radial-gradient(ellipse 47% 45% at 88% 19%,rgba(194,55,175,.37),transparent 100%),
+    radial-gradient(ellipse 53% 55% at 47% 67%,rgba(96,71,220,.35),transparent 100%),
+    radial-gradient(ellipse 39% 45% at 86% 90%,rgba(235,81,145,.21),transparent 100%),
+    linear-gradient(133deg,#08172c 0%,#111739 45%,#261636 79%,#101f3b 100%)!important;
+  background-attachment:fixed!important;
+}
+html[data-theme='dark'] .main{
+  background:transparent!important;
+  position:relative;
+  isolation:isolate;
+}
+html[data-theme='dark'] main#mainContent{background:transparent!important}
+html[data-theme='dark'] .sidebar{
+  background:rgba(12,23,48,.72)!important;
+  border-right:1px solid rgba(138,193,255,.24)!important;
+  box-shadow:8px 0 35px rgba(0,8,36,.24),0 0 22px rgba(26,163,255,.10)!important;
+  backdrop-filter:blur(25px) saturate(140%)!important;
+  -webkit-backdrop-filter:blur(25px) saturate(140%)!important;
+}
+html[data-theme='dark'] .topbar,
+html[data-theme='dark'] .demo-bar{
+  background:rgba(12,24,53,.70)!important;
+  border-color:rgba(142,180,247,.20)!important;
+  backdrop-filter:blur(22px) saturate(145%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(145%)!important;
+}
+html[data-theme='dark'] .sidebar .workspace{
+  background:rgba(39,55,92,.52)!important;
+  border-color:rgba(158,191,255,.27)!important;
+  box-shadow:0 0 15px rgba(77,150,255,.16)!important;
+}
+html[data-theme='light'] main#mainContent :is(
+ .tf-pane,.tf-widget,.os-pane,.os-number-card,.os-welcome,.tf-metric,
+ .tf-toolbar,.tf-task-toolbar,.tf-project-hero,.tf-dashboard-header,.tf-dashboard-widget,
+ .tf-client-register,.record-card,.panel,.stat,.record,.creative,.person,.task-card,.lane,
+ .dash-tile,.tf-kanban-lane,.tf-kanban-card,.tf-phase-card,.tf-user-card,
+ .autopay,.notice,.tf-home-task-register,.tf-admin-activity-summary
+),
+html[data-theme='dark'] main#mainContent :is(
+ .tf-pane,.tf-widget,.os-pane,.os-number-card,.os-welcome,.tf-metric,
+ .tf-toolbar,.tf-task-toolbar,.tf-project-hero,.tf-dashboard-header,.tf-dashboard-widget,
+ .tf-client-register,.record-card,.panel,.stat,.record,.creative,.person,.task-card,.lane,
+ .dash-tile,.tf-kanban-lane,.tf-kanban-card,.tf-phase-card,.tf-user-card,
+ .autopay,.notice,.tf-home-task-register,.tf-admin-activity-summary
+){
+  background:var(--glass-surface)!important;
+  border:1px solid var(--glass-stroke)!important;
+  border-radius:17px!important;
+  box-shadow:var(--glass-glow)!important;
+  backdrop-filter:blur(22px) saturate(155%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(155%)!important;
+}
+html[data-theme='light'] main#mainContent :is(.tf-widget,.tf-pane,.dash-tile,.tf-metric,.os-number-card,.record-card):hover,
+html[data-theme='dark'] main#mainContent :is(.tf-widget,.tf-pane,.dash-tile,.tf-metric,.os-number-card,.record-card):hover{
+  border-color:color-mix(in srgb,var(--glass-stroke) 75%,#fff)!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.20) inset,
+    0 0 23px rgba(52,185,255,.44),0 0 43px rgba(221,94,250,.31),
+    0 18px 41px rgba(24,48,105,.24)!important;
+}
+html[data-theme='dark'] main#mainContent :is(
+ .tf-widget-header,.tf-grid tbody td,.tf-client-table td,.tf-home-task-row,
+ .tf-task-table td,.tf-list-title,.tf-client-table th,.tf-tabs,.tf-home-task-register th
+){
+  background:rgba(25,37,76,.45)!important;
+  color:var(--text);
+  border-color:rgba(156,189,255,.18)!important;
+}
+html[data-theme='dark'] main#mainContent :is(input,select,textarea,.tf-field-search){
+  background:rgba(11,23,52,.83)!important;
+  border-color:rgba(147,186,255,.29)!important;
+  color:var(--text)!important;
+}
+html[data-theme='dark'] main#mainContent :is(input,textarea)::placeholder{color:#9eb0d0!important}
+html[data-theme='dark'] main#mainContent :is(.tf-widget-header,.tf-panel-header,.tf-list-title){
+  border-color:rgba(160,193,255,.21)!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-client-register,.tf-widget,.tf-pane) :is(h1,h2,h3,h4,strong){color:var(--text)}
+html[data-theme='dark'] main#mainContent :is(.tf-client-register,.tf-widget,.tf-pane) :is(p,small){color:var(--muted)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  html[data-theme='dark'] main#mainContent :is(.tf-pane,.tf-widget,.os-pane,.tf-metric,.panel,.record,.dash-tile){background:rgba(23,33,66,.94)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-theme='dark'] .shell{background-attachment:scroll!important}
+}
