@@ -265,3 +265,92 @@ html[data-theme='dark'] .tf-gantt-track{background-image:linear-gradient(to righ
 .tf-gantt-controls>button{border:1px solid var(--border);padding:5px 9px;background:var(--panel);color:var(--text);font-size:12px;border-radius:5px}
 .tf-gantt-controls>button:hover{background:var(--accent-soft);color:var(--accent)}
 .tf-gantt-controls .tf-gantt-legend{margin-left:8px}
+
+
+/* 2026-11-23: Repair the Clients register and restore legacy card surfaces.
+   Retains existing client assignment actions and API behavior. */
+.sidebar .brand{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  gap:10px!important;min-height:60px;margin:0 5px 8px!important;
+  padding:8px 7px 13px!important;overflow:hidden;
+}
+.sidebar .brand img{width:37px!important;height:37px!important;flex:0 0 37px;object-fit:contain}
+.sidebar .brand span{font-size:18px!important;letter-spacing:-.65px!important;line-height:1.2;white-space:nowrap}
+.sidebar .brand sup{font-size:8px;vertical-align:super}
+.sidebar .workspace{
+  display:flex;align-items:center;gap:10px!important;min-height:58px;
+  margin:3px 4px 12px!important;padding:9px 10px!important;
+  background:var(--panel)!important;border:1px solid var(--border)!important;
+  box-shadow:0 1px 3px rgba(30,54,88,.055)!important;
+}
+.sidebar .workspace>div{min-width:0;overflow:hidden}
+.sidebar .workspace strong{font-size:12px!important;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar .workspace small{font-size:10px!important;line-height:1.4;margin-top:2px!important}
+.sidebar .workspace .avatar{width:35px!important;height:35px!important;flex:0 0 35px;border-radius:10px!important}
+/* Previously, .record-card had no base padding, background or border at all.
+   These rules also repair other legacy record grids. */
+#mainContent .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px;margin-top:15px;align-items:stretch}
+#mainContent .record-card{position:relative;min-width:0;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px!important;box-shadow:0 2px 9px rgba(31,54,93,.055)!important;
+  padding:19px 20px;overflow:hidden;min-height:155px}
+#mainContent .record-card h3{font-size:16px;line-height:1.4;margin:13px 0 6px;font-weight:750;color:var(--text)}
+#mainContent .record-card p{color:var(--muted);font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+#mainContent .record-card .record-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#mainContent .record-card .meta{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:11px;color:var(--muted)}
+#mainContent .record-card .actions{margin-top:16px}
+#mainContent .record-card .actions button{font-size:11px;padding:7px 12px;background:var(--raised);color:var(--text);border:1px solid var(--border)}
+#mainContent .record-card .actions button:hover{color:var(--accent);background:var(--accent-soft);border-color:var(--accent)}
+/* Compact, readable Zoho-style client table: no phantom white card area. */
+.tf-client-register{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(30,56,96,.045);width:100%;min-width:0}
+.tf-client-register-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
+  gap:12px;padding:18px 20px 16px;border-bottom:1px solid var(--border)}
+.tf-client-register-label{display:block;font-size:10px;letter-spacing:1.05px;color:var(--accent);font-weight:750;margin-bottom:5px}
+.tf-client-register-header h2{margin:0;font-size:18px;line-height:1.35;color:var(--text);font-weight:780;letter-spacing:-.3px}
+.tf-client-register-header h2 span{display:inline-grid;place-items:center;margin-left:5px;min-width:23px;height:22px;
+  border-radius:6px;background:var(--raised);color:var(--muted);font-size:11px;font-weight:700;vertical-align:2px}
+.tf-client-register-actions{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
+.tf-client-active{color:#228b6e;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+.tf-client-active i{width:7px;height:7px;background:#31b78b;border-radius:50%;display:inline-block}
+.tf-client-create{font-size:11px!important;font-weight:750!important;color:#fff!important;background:#2875e6!important;
+  border:1px solid #2875e6!important;padding:8px 13px!important;border-radius:6px!important}
+.tf-client-create:hover{background:#155fce!important;color:#fff!important}
+.tf-client-table-wrap{overflow-x:auto;width:100%;scrollbar-width:thin}
+.tf-client-table{border-collapse:collapse;width:100%;min-width:800px;table-layout:fixed;font-size:12px;color:var(--text)}
+.tf-client-table th{background:var(--raised);font-size:10px;font-weight:750;color:var(--muted);text-align:left;
+  padding:12px 15px;white-space:nowrap;border-bottom:1px solid var(--border)}
+.tf-client-table th:nth-child(1){width:9%}.tf-client-table th:nth-child(2){width:21%}
+.tf-client-table th:nth-child(3){width:14%}.tf-client-table th:nth-child(4){width:12%}
+.tf-client-table th:nth-child(5){width:17%}.tf-client-table th:nth-child(6){width:11%}.tf-client-table th:nth-child(7){width:16%}
+.tf-client-table td{padding:15px;vertical-align:middle;border-bottom:1px solid var(--border);background:var(--panel);
+  overflow:hidden;text-overflow:ellipsis;line-height:1.45}
+.tf-client-table tbody tr:last-child td{border-bottom:0}
+.tf-client-table tbody tr:hover td{background:color-mix(in srgb,var(--accent) 4%,var(--panel))}
+.tf-client-code{display:inline-block;font-weight:700;font-size:11px;color:var(--accent);white-space:nowrap}
+.tf-client-identity{display:flex;align-items:center;gap:11px;min-width:0}
+.tf-client-avatar{display:inline-grid;place-items:center;flex:0 0 35px;width:35px;height:35px;
+  border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800}
+.tf-client-identity>div{min-width:0}
+.tf-client-identity strong{display:block;font-size:12px;font-weight:750;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tf-client-identity small{display:block;color:var(--muted);font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tf-client-company,.tf-client-team{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;color:var(--text)}
+.tf-client-package{font-size:12px;color:var(--text);font-weight:700}
+.tf-client-unassigned{font-size:11px;color:var(--muted)}
+.tf-client-table .badge{border-radius:15px;font-size:10px;font-weight:700;padding:5px 9px}
+.tf-client-assign{color:var(--accent)!important;background:var(--accent-soft)!important;
+  border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border))!important;
+  padding:8px 10px!important;font-size:11px!important;border-radius:6px!important;font-weight:700!important;
+  white-space:nowrap}
+.tf-client-assign:hover{color:#fff!important;background:#2373df!important;border-color:#2373df!important}
+.tf-client-empty{text-align:center!important;padding:44px 18px!important}
+.tf-client-empty strong{display:block;font-size:14px;color:var(--text)}
+.tf-client-empty span{display:block;margin-top:7px;color:var(--muted);font-size:12px}
+html[data-theme='dark'] .tf-client-active{color:#5fd6b2}
+@media(max-width:950px){.tf-client-register-header{padding:14px 15px}.tf-client-table{min-width:820px}}
+@media(max-width:730px){.sidebar .brand{justify-content:center!important;margin:0 auto 14px!important;padding:0!important;min-height:40px}
+  .sidebar .brand img{width:36px!important;height:36px!important;flex:0 0 36px}
+  .sidebar .brand span,.sidebar .workspace{display:none!important}
+  .tf-client-register-header{align-items:flex-start}
+  .tf-client-register-actions{width:100%;justify-content:space-between}
+  main#mainContent{padding:16px 12px 35px!important}
+}
