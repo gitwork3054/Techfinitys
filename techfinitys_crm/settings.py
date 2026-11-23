@@ -76,7 +76,7 @@ if database_url:
 # relying on email notifications. In-app notifications work out of the box.
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator','OPTIONS':{'min_length':10}},
+    {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator','OPTIONS':{'min_length':4}},
     {'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME':'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]

@@ -524,8 +524,10 @@ def operations_api(request):
                 new = str(data.get('newPassword') or '')
                 if not request.user.check_password(old):
                     raise PermissionError('Current password is incorrect')
-                if len(new)<12 or new==old or new.isalpha() or new.isdigit():
-                    raise ValueError('New password must have at least 12 characters and include a mix of characters')
+                if len(new) < 4:
+                    raise ValueError('New password must have at least 4 characters')
+                if new == old:
+                    raise ValueError('New password must be different from the current password')
                 request.user.set_password(new); request.user.save(update_fields=['password'])
                 update_session_auth_hash(request,request.user)
                 _log(member,'Changed own password')

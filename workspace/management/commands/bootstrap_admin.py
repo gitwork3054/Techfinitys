@@ -8,6 +8,8 @@ class Command(BaseCommand):
     def add_arguments(self,p):
         p.add_argument('--username',default='admin'); p.add_argument('--password',default='admin12345'); p.add_argument('--email',default='')
     def handle(self,*args,**o):
+        if len(o['password']) < 4:
+            raise CommandError('Admin password must contain at least 4 characters')
         if not settings.DEBUG and o['password']=='admin12345':
             raise CommandError('A secure explicit --password is required in production')
         u,_=User.objects.get_or_create(username=o['username'],defaults={'email':o['email'],'is_staff':True,'is_superuser':True})

@@ -17,8 +17,8 @@ class Command(BaseCommand):
         if not password:
             self.stdout.write(self.style.WARNING('No CRM_ADMIN_PASSWORD set; initial admin not created.'))
             return
-        if not username or len(password) < 16:
-            raise CommandError('Set CRM_ADMIN_USERNAME and a strong CRM_ADMIN_PASSWORD of at least 16 characters.')
+        if not username or len(password) < 4:
+            raise CommandError('Set CRM_ADMIN_USERNAME and CRM_ADMIN_PASSWORD of at least 4 characters.')
         if User.objects.filter(username=username).exists():
             raise CommandError('Initial admin username already belongs to a non-admin account.')
         user = User.objects.create_superuser(username=username, password=password)

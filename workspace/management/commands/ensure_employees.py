@@ -27,8 +27,8 @@ class Command(BaseCommand):
                 'Employee setup skipped: CRM_EMPLOYEE_INITIAL_PASSWORD is not configured.'
             ))
             return
-        if len(password) < 16:
-            raise CommandError('CRM_EMPLOYEE_INITIAL_PASSWORD must be at least 16 characters long.')
+        if len(password) < 4:
+            raise CommandError('CRM_EMPLOYEE_INITIAL_PASSWORD must be at least 4 characters long.')
 
         User = get_user_model()
         created, existing_employees, conflicts = [], [], []

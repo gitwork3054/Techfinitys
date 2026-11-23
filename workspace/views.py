@@ -375,8 +375,8 @@ def workspace_api(request):
                 # optional portal user
                 portal_username = (data.get('portalUsername') or '').strip()
                 if portal_username:
-                    if len(data.get('portalPassword') or '') < 12:
-                        raise ValueError('Set a client portal password with at least 12 characters')
+                    if len(data.get('portalPassword') or '') < 4:
+                        raise ValueError('Set a client portal password with at least 4 characters')
                     if User.objects.filter(username=portal_username).exists():
                         raise ValueError('Portal username already exists')
                     u = User.objects.create_user(username=portal_username, email=data.get('email',''), password=data['portalPassword'])
@@ -396,8 +396,8 @@ def workspace_api(request):
                 username = (data.get('username') or '').strip()
                 if not username or User.objects.filter(username=username).exists():
                     raise ValueError('A unique username is required')
-                if len(data.get('password') or '') < 12:
-                    raise ValueError('New users require a password of at least 12 characters')
+                if len(data.get('password') or '') < 4:
+                    raise ValueError('New users require a password of at least 4 characters')
                 if role == 'client' and not data.get('clientId'):
                     raise ValueError('Client users must belong to a client')
                 if role == 'client' and not ClientAccount.objects.filter(pk=data['clientId']).exists():
