@@ -46,10 +46,21 @@
     const input=document.createElement('input');input.type='search';input.className='tf-recent-search';input.placeholder='Find project…';input.setAttribute('aria-label','Search recent projects');
     input.addEventListener('input',()=>{ui.recentQuery=input.value;drawRecent()});head.appendChild(input);input.focus();
   }
-  function viewProject(id){
+  async function viewProject(id){
     if(!ui.recent.some(p=>p.id===id) && !window.state?.projects?.some(p=>p.id===id))return;
-    if(window.TFPlus?.openProject)window.TFPlus.openProject(id);
-    else if(window.go)window.go('projects');
+    // The recent-project feed can finish after the main workspace request.
+    // Refresh the permission-scoped workspace before navigating if its snapshot
+    // is older. Never synthesize a project or bypass the backend access filter.
+    if(!window.state?.projects?.some(p=>p.id===id) && typeof window.load==='function'){
+      await window.load();
+    }
+    if(window.state?.projects?.some(p=>p.id===id) && window.TFPlus?.openProject){
+      window.TFPlus.openProject(id);
+    }else if(window.go){
+      window.go('projects');
+      if(window.state)window.state.notice='This project is not in your current project list. Ask an admin to check your active client assignment.';
+      if(typeof window.render==='function')window.render();
+    }
   }
   async function touchProject(id){
     if(!id || !window.state?.ctx)return;
@@ -159,6 +170,12 @@
       const data=await xhr(BASE);
       ui.recent=data.recentProjects||[];ui.people=data.people||[];ui.chats=data.conversations||[];
       ui.ready=true;ui.notice='';drawRecent();drawDock();
+      // Keep the project register in sync when a newly granted assignment
+      // appears in Recent Projects before the main workspace data refreshes.
+      if(!ui.projectSyncChecked && role()==='employee' && ui.recent.some(p=>!window.state?.projects?.some(x=>x.id===p.id))){
+        ui.projectSyncChecked=true;
+        if(typeof window.load==='function')await window.load();
+      }
       if(ui.panel&&ui.mode==='list')drawList();
       if(ui.panel&&ui.mode==='thread')await loadThread(ui.currentId,true);
     }catch(error){if(ui.panel)message(error.message,true)}finally{ui.loading=false}
