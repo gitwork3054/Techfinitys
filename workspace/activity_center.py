@@ -26,6 +26,7 @@ SECTIONS = {
     'clients': ('client', 'ticket', 'support'),
     'billing': ('invoice', 'payment', 'billing'),
     'people': ('employee', 'member', 'assignment', 'lead', 'profile', 'team', 'password'),
+    'access': ('signed in', 'signed out', 'login', 'logout', 'sign-in', 'sign-out'),
     'chat': ('chat', 'conversation', 'message'),
 }
 
@@ -67,10 +68,15 @@ def _view(request, member):
         'pendingTimesheets': TimeEntry.objects.filter(status='submitted', employee__role__in=STAFF_ROLES).count(),
         'pendingApprovals': ApprovalRequest.objects.filter(status='pending', audience='internal').count(),
         'onShift': Attendance.objects.filter(clock_out__isnull=True, employee__is_active=True, employee__role__in=STAFF_ROLES).count(),
+        'onBreak': Attendance.objects.filter(clock_out__isnull=True, break_started_at__isnull=False, employee__role__in=STAFF_ROLES).count(),
+        'clockedInToday': Attendance.objects.filter(date=local_today, employee__role__in=STAFF_ROLES).count(),
         'todayActions': events.filter(created_at__gte=day_start).count(),
     }
     if summary:
         return JsonResponse({'summary': overview})
+    if data.get('ledger'):
+        from .activity_ledgers import employee_ledger
+        return employee_ledger(request, overview)
 
     # Always scope event searches server-side; pagination prevents huge audit payloads.
     term = (data.get('q') or '').strip()[:100]
@@ -105,7 +111,7 @@ def _view(request, member):
     results = list(events.order_by('-id')[:51])
     more = len(results) > 50
     rows = results[:50]
-    staff = Member.objects.filter(role__in=STAFF_ROLES, is_active=True).select_related('user').order_by('user__first_name', 'user__username')[:400]
+    staff = Member.objects.filter(role__in=STAFF_ROLES).select_related('user').order_by('user__first_name', 'user__username')[:400]
     leaves = LeaveRequest.objects.filter(status='pending', employee__role__in=STAFF_ROLES).select_related('employee__user').order_by('created_at')[:60]
     times = TimeEntry.objects.filter(status='submitted', employee__role__in=STAFF_ROLES).select_related('employee__user', 'client', 'project').order_by('created_at')[:60]
     approvals = ApprovalRequest.objects.filter(status='pending', audience='internal').select_related('requested_by__user', 'client').order_by('created_at')[:60]
@@ -141,7 +147,9 @@ def admin_activity_api(request):
     if member.role != 'admin':
         return JsonResponse({'error': 'Super Admin access required'}, status=403)
     if request.method == 'GET':
-        return _view(request, member)
+        result = _view(request, member)
+        result['Cache-Control'] = 'private, no-store'
+        return result
     try:
         payload = json.loads(request.body or b'{}')
         if not isinstance(payload, dict) or payload.get('action') != 'mark_seen':

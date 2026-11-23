@@ -211,3 +211,91 @@ class AdminActivityTests(TestCase):
         self.assertEqual(self.act('/api/projects-plus/','set_task_date',taskId=str(self.task.pk),field='startAt',date=later).status_code,403)
         self.as_user(self.portal)
         self.assertEqual(self.act('/api/projects-plus/','set_task_date',taskId=str(self.task.pk),field='dueAt',date=later).status_code,403)
+
+    def test_admin_attendance_register_lists_times_breaks_and_search_filters(self):
+        now = timezone.now()
+        Attendance.objects.create(employee=self.worker, date=timezone.localdate(),
+                                  clock_in=now-timedelta(hours=3), clock_out=now,
+                                  break_seconds=900, mode='office')
+        Attendance.objects.create(employee=self.other, date=timezone.localdate(),
+                                  clock_in=now-timedelta(hours=2), clock_out=now,
+                                  break_seconds=120, mode='remote')
+        self.as_user(self.admin)
+        result = self.client.get('/api/admin-activity/', {'ledger':'attendance','employeeId':self.worker.pk})
+        self.assertEqual(result.status_code, 200, result.content)
+        self.assertIn('no-store', result['Cache-Control'])
+        rows=result.json()['rows']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['employeeId'], self.worker.pk)
+        self.assertEqual(rows[0]['breakMinutes'], 15)
+        self.assertEqual(rows[0]['status'], 'Clocked out')
+        self.assertIsNotNone(rows[0]['clockIn'])
+        self.assertIsNotNone(rows[0]['clockOut'])
+        self.assertGreater(rows[0]['workedMinutes'], 160)
+        self.assertEqual(len(self.client.get('/api/admin-activity/', {'ledger':'attendance','status':'clocked_out'}).json()['rows']), 2)
+        self.assertEqual(len(self.client.get('/api/admin-activity/', {'ledger':'attendance','status':'on_break'}).json()['rows']), 0)
+        self.as_user(self.worker)
+        self.assertEqual(self.client.get('/api/admin-activity/?ledger=attendance').status_code,403)
+
+    def test_leave_history_shows_decided_requests_and_reviewer(self):
+        day=timezone.localdate()+timedelta(days=6)
+        LeaveRequest.objects.create(employee=self.worker, leave_type='annual', start_date=day,
+                                    end_date=day+timedelta(days=2), status='approved',
+                                    reason='Personal work', reviewed_by=self.manager,
+                                    reviewed_at=timezone.now(),review_note='Coverage arranged')
+        LeaveRequest.objects.create(employee=self.other, leave_type='casual',start_date=day,
+                                    end_date=day,status='rejected',reason='Personal work',
+                                    reviewed_by=self.manager,reviewed_at=timezone.now())
+        self.as_user(self.admin)
+        res=self.client.get('/api/admin-activity/',{'ledger':'leaves','status':'approved'})
+        self.assertEqual(res.status_code,200,res.content)
+        data=res.json()['rows']
+        self.assertEqual(len(data),1)
+        self.assertEqual(data[0]['days'],3)
+        self.assertEqual(data[0]['reviewedBy'],'activity-manager')
+        self.assertEqual(data[0]['reviewNote'],'Coverage arranged')
+        self.assertEqual(len(self.client.get('/api/admin-activity/',{'ledger':'leaves','status':'rejected'}).json()['rows']),1)
+
+    def test_timesheet_register_filters_employee_and_protects_private_records(self):
+        TimeEntry.objects.create(employee=self.worker,client=self.client_a,project=self.project,
+                                 task=self.task,date=timezone.localdate(),minutes=95,
+                                 description='Social video',status='submitted')
+        TimeEntry.objects.create(employee=self.other,client=self.client_b,date=timezone.localdate(),
+                                 minutes=45,description='Internal review',status='draft')
+        self.as_user(self.admin)
+        result=self.client.get('/api/admin-activity/', {'ledger':'timesheets','employeeId':self.worker.pk})
+        self.assertEqual(result.status_code,200,result.content)
+        self.assertEqual(len(result.json()['rows']),1)
+        self.assertEqual(result.json()['rows'][0]['minutes'],95)
+        self.assertEqual(result.json()['rows'][0]['task'],'Social creative')
+        self.assertEqual(len(self.client.get('/api/admin-activity/',{'ledger':'timesheets','status':'submitted'}).json()['rows']),1)
+        self.as_user(self.portal)
+        self.assertEqual(self.client.get('/api/admin-activity/?ledger=timesheets').status_code,403)
+
+    def test_employee_register_pagination_validation_and_login_logout(self):
+        now=timezone.now()
+        for index in range(52):
+            Attendance.objects.create(employee=self.worker,
+                                      date=timezone.localdate()-timedelta(days=index),
+                                      clock_in=now-timedelta(days=index,hours=8),
+                                      clock_out=now-timedelta(days=index,hours=1))
+        self.as_user(self.admin)
+        page1=self.client.get('/api/admin-activity/?ledger=attendance').json()
+        self.assertEqual(len(page1['rows']),50)
+        self.assertTrue(page1['hasMore'])
+        page2=self.client.get('/api/admin-activity/?ledger=attendance&page=2').json()
+        self.assertEqual(len(page2['rows']),2)
+        self.assertFalse(page2['hasMore'])
+        for query in ('ledger=attendance&page=-1','ledger=attendance&status=broken',
+                      'ledger=attendance&employeeId=oops','ledger=leaves&from=2050-12-31&to=2020-01-01',
+                      'ledger=other'):
+            self.assertEqual(self.client.get('/api/admin-activity/?'+query).status_code,400,query)
+        self.client.logout()
+        signed_in=self.client.post('/login/',{'username':'activity-worker','password':'a-long-safe-password-456'})
+        self.assertEqual(signed_in.status_code,302,signed_in.content)
+        signed_out=self.client.get('/logout/')
+        self.assertEqual(signed_out.status_code,302,signed_out.content)
+        self.as_user(self.admin)
+        feed=self.client.get('/api/admin-activity/?category=access').json()['events']
+        self.assertEqual({event['action'] for event in feed},{'Signed in','Signed out'})
+        self.assertTrue(all(event['employee']=='activity-worker' for event in feed))

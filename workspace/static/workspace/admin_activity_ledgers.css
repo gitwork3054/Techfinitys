@@ -1,0 +1,22 @@
+/* Staff logbooks: compact, readable, accessible on laptop and phone. */
+.tf-ac-stat[type="button"]{appearance:none;text-align:left;cursor:pointer;font:inherit;color:var(--ac-ink)}
+.tf-ac-stat[type="button"]:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--ac-ink);transform:translateY(-1px)}
+.tf-ac-stat[type="button"]:focus-visible,.tf-ac-person-link:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.tf-ac-stat[type="button"] strong{color:var(--ac-ink)}
+.tf-ac-ledger-scroll{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--ac-border);border-radius:14px;background:var(--ac-panel);box-shadow:var(--shadow)}
+.tf-ac-ledger-table{border-collapse:collapse;width:100%;min-width:900px;font-size:12px;color:var(--ac-ink)}
+.tf-ac-ledger-table thead th{text-align:left;background:var(--ac-subtle);border-bottom:1px solid var(--ac-border);font-size:10px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;padding:14px 12px}
+.tf-ac-ledger-table tbody td{padding:13px 12px;border-bottom:1px solid var(--ac-border);vertical-align:top;line-height:1.45;max-width:260px;overflow-wrap:anywhere}
+.tf-ac-ledger-table tbody tr:last-child td{border-bottom:0}
+.tf-ac-ledger-table tbody tr:hover{background:var(--ac-subtle)}
+.tf-ac-ledger-table tbody td small{display:block;color:var(--ac-muted);font-size:10px;margin-top:4px}
+.tf-ac-ledger-table .tf-ac-state{text-transform:capitalize;white-space:nowrap;display:inline-flex}
+.tf-ac-person-link{border:0;background:transparent;color:var(--accent);cursor:pointer;text-align:left;font:inherit;font-weight:750;padding:0;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px}
+.tf-ac-person-link:hover{color:var(--accent);text-decoration-color:currentColor;background:transparent}
+.tf-ac-ledger-note{max-width:240px;white-space:pre-wrap}
+.tf-ac-ledger-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 2px;color:var(--ac-muted);font-size:11px}
+.tf-ac-ledger-foot button{border:1px solid var(--ac-border);border-radius:9px;background:var(--ac-panel);color:var(--ac-ink);font-size:11px;font-weight:700;padding:9px 14px}
+.tf-ac-ledger-foot button:hover{background:var(--accent-soft);color:var(--accent)}
+.tf-ac-ledger-foot button:disabled{opacity:.55;cursor:wait}
+.tf-ac-ledger-filters{align-items:center}
+@media(max-width:620px){.tf-ac-ledger-table{min-width:760px}.tf-ac-ledger-table tbody td{padding:10px}.tf-ac-ledger-scroll{margin:0 -2px;width:calc(100% + 4px)}}

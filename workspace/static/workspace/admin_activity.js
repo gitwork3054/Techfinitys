@@ -1,16 +1,16 @@
 /* Super Admin command inbox: company-wide audit trail and approval review. */
 (function(){
-  const ui={data:null,summary:null,loading:false,error:'',tab:'pending',filter:{q:'',category:'all',employeeId:'',from:'',to:''},cursor:'',next:null,seen:false,requestId:0,searchTimer:null};
+  const ui={data:null,summary:null,loading:false,error:'',tab:'pending',filter:{q:'',category:'all',employeeId:'',from:'',to:''},cursor:'',next:null,seen:false,requestId:0,searchTimer:null,ledgerData:null,ledgerLoading:false,ledgerError:'',ledgerRequestId:0,ledgerStatus:'all'};
   const escHtml=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const csrf=()=>decodeURIComponent(document.cookie.split('; ').find(x=>x.startsWith('csrftoken='))?.split('=')[1]||'');
   const at=x=>x?new Date(x).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
   const statusTime=x=>x?new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
-  const card=(label,value,note,icon)=>`<article class="tf-ac-stat"><span>${icon} ${escHtml(label)}</span><strong>${Number(value||0).toLocaleString('en-IN')}</strong><small>${escHtml(note)}</small></article>`;
+  const card=(label,value,note,icon,tab)=>`<button type="button" class="tf-ac-stat" onclick="TFAdminActivity.switchTab('${tab}')"><span>${icon} ${escHtml(label)}</span><strong>${Number(value||0).toLocaleString('en-IN')}</strong><small>${escHtml(note)}</small></button>`;
   const isAdmin=()=>window.state?.ctx?.role==='admin';
-  const categories=[['all','All activity'],['attendance','Attendance & breaks'],['leave','Leave requests'],['tasks','Projects & tasks'],['time','Timesheets'],['approvals','Approvals'],['clients','Clients & support'],['billing','Invoices & payments'],['people','Team & users'],['chat','Chat metadata'],['other','Other']];
+  const categories=[['all','All activity'],['attendance','Attendance & breaks'],['leave','Leave requests'],['tasks','Projects & tasks'],['time','Timesheets'],['approvals','Approvals'],['clients','Clients & support'],['billing','Invoices & payments'],['people','Team & users'],['access','Sign in / out'],['chat','Chat metadata'],['other','Other']];
   if (typeof menus!=='undefined' && menus.admin && !menus.admin.includes('admin_activity')) menus.admin.splice(1,0,'admin_activity');
   if(typeof labels!=='undefined')labels.admin_activity='Admin activity';
-  const statusDesc={attendance:'Attendance',leave:'Leave',tasks:'Projects & tasks',time:'Time tracking',approvals:'Approvals',clients:'Client service',billing:'Billing',people:'Team',chat:'Chat activity',other:'Operations'};
+  const statusDesc={attendance:'Attendance',leave:'Leave',tasks:'Projects & tasks',time:'Time tracking',approvals:'Approvals',clients:'Client service',billing:'Billing',people:'Team',access:'Access',chat:'Chat activity',other:'Operations'};
   function updateBadges(){
     if(!isAdmin())return;
     const n=ui.summary?.unread??window.state.notifications?.filter(x=>!x.read).length??0;
@@ -26,11 +26,11 @@
       if(append&&ui.data){data.events=[...ui.data.events,...data.events]}ui.data=data;ui.summary=data.summary;ui.next=data.nextBefore;ui.seen=true;updateBadges();
     }catch(err){ui.error=err.message;}finally{if(req===ui.requestId){ui.loading=false;if(state.tab==='admin_activity')draw();else if(state.tab==='overview')renderSummary();}}
   }
-  function applyFilter(key,value){if(!(key in ui.filter))return;ui.filter[key]=value;ui.next=null;ui.data=null;fetchEvents();}
+  function applyFilter(key,value){if(!(key in ui.filter))return;ui.filter[key]=value;ui.next=null;if(isLedger()){fetchLedger(1);}else{ui.data=null;fetchEvents();}}
   function search(value){clearTimeout(ui.searchTimer);ui.searchTimer=setTimeout(()=>applyFilter('q',value),350);}
-  function clearFilters(){ui.filter={q:'',category:'all',employeeId:'',from:'',to:''};ui.next=null;ui.data=null;fetchEvents();}
+  function clearFilters(){ui.filter={q:'',category:'all',employeeId:'',from:'',to:''};ui.ledgerStatus='all';ui.next=null;if(isLedger()){fetchLedger(1);}else{ui.data=null;fetchEvents();}}
   function show(){if(!isAdmin())return;go('admin_activity');fetchEvents();}
-  function switchTab(which){ui.tab=which==='history'?'history':'pending';draw();}
+  function switchTab(which){const next=['pending','history','attendance','leaves','timesheets'].includes(which)?which:'pending';if(next!==ui.tab){ui.tab=next;ui.ledgerData=null;ui.ledgerError='';ui.ledgerRequestId++;ui.ledgerStatus='all';}draw();if(isLedger())fetchLedger(1);else if(!ui.data)fetchEvents();}
   function pendingRow(p,kind){
     const isLeave=kind==='leave',isTime=kind==='timesheet';
     const category=isLeave?'Leave request':isTime?'Timesheet submitted':'Internal sign-off';
@@ -50,12 +50,72 @@
       <div class="tf-ac-timeline" aria-live="polite">${(d.events||[]).map(a=>`<article class="tf-ac-event"><span class="tf-ac-avatar">${escHtml(a.employee.split(/\s+/).map(n=>n.charAt(0)).join('').slice(0,2).toUpperCase())}</span><div class="tf-ac-event-body"><div class="tf-ac-event-title"><strong>${escHtml(a.employee)}</strong><span>${escHtml(a.action)}</span></div><div class="tf-ac-event-meta"><span class="tf-ac-tag ${escHtml(a.category)}">${escHtml(statusDesc[a.category]||a.category)}</span>${a.client?`<span>${escHtml(a.client)}</span>`:''}<time>${escHtml(at(a.at))}</time></div>${a.detail?`<p>${escHtml(a.detail)}</p>`:''}</div></article>`).join('')||`<div class="tf-ac-empty"><span>◌</span><strong>No matching activity</strong><p>Try another date, category or employee.</p></div>`}</div>
       ${ui.next?`<div class="tf-ac-more"><button type="button" onclick="TFAdminActivity.more()">Load older activity</button></div>`:''}`;
   }
+  // Dedicated paginated employee ledgers: separate from the infinite audit feed.
+  function isLedger(){return ['attendance','leaves','timesheets'].includes(ui.tab);}
+  const hours=x=>`${(Number(x||0)/60).toFixed(1)} h`;
+  async function fetchLedger(page=1){
+    if(!isAdmin()||!isLedger())return;
+    const kind=ui.tab, filterKey=JSON.stringify(ui.filter)+'/'+ui.ledgerStatus;
+    const request=++ui.ledgerRequestId;
+    ui.ledgerLoading=true;ui.ledgerError='';if(page===1)ui.ledgerData=null;draw();
+    const params=new URLSearchParams({...ui.filter,ledger:kind,page:String(page)});
+    if(ui.ledgerStatus!=='all')params.set('status',ui.ledgerStatus);
+    try{
+      const response=await fetch('/api/admin-activity/?'+params.toString(),{cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok)throw Error(data.error||'Could not load employee records');
+      if(request!==ui.ledgerRequestId||ui.tab!==kind||JSON.stringify(ui.filter)+'/'+ui.ledgerStatus!==filterKey)return;
+      if(page>1&&ui.ledgerData&&ui.ledgerData.ledger===kind)data.rows=[...ui.ledgerData.rows,...data.rows];
+      ui.ledgerData=data;ui.summary=data.summary;updateBadges();
+    }catch(err){if(request===ui.ledgerRequestId)ui.ledgerError=err.message;}
+    finally{if(request===ui.ledgerRequestId){ui.ledgerLoading=false;draw();}}
+  }
+  function ledgerStatus(value){ui.ledgerStatus=value;fetchLedger(1);}
+  function ledgerFilters(){
+    const people=ui.data?.employees||[];
+    const choices=ui.tab==='attendance'?[['all','All shift statuses'],['working','Working'],['on_break','On break'],['clocked_out','Clocked out']]:
+      ui.tab==='leaves'?[['all','All leave decisions'],['pending','Pending'],['approved','Approved'],['rejected','Declined'],['cancelled','Cancelled']]:
+      [['all','All timesheet statuses'],['draft','Draft'],['submitted','Submitted'],['approved','Approved'],['rejected','Rejected']];
+    return `<div class="tf-ac-filters tf-ac-ledger-filters">
+      <label class="tf-ac-search">⌕ <input type="search" placeholder="Search employees and records…" aria-label="Search employee records" value="${escHtml(ui.filter.q)}" oninput="TFAdminActivity.search(this.value)"></label>
+      <select aria-label="Select employee" onchange="TFAdminActivity.applyFilter('employeeId',this.value)"><option value="">All employees</option>${people.map(p=>`<option value="${p.id}" ${String(ui.filter.employeeId)===String(p.id)?'selected':''}>${escHtml(p.name)}</option>`).join('')}</select>
+      <select aria-label="Record status" onchange="TFAdminActivity.ledgerStatus(this.value)">${choices.map(([id,label])=>`<option value="${id}" ${ui.ledgerStatus===id?'selected':''}>${label}</option>`).join('')}</select>
+      <label class="tf-ac-date">From <input type="date" value="${escHtml(ui.filter.from)}" onchange="TFAdminActivity.applyFilter('from',this.value)"></label>
+      <label class="tf-ac-date">To <input type="date" value="${escHtml(ui.filter.to)}" onchange="TFAdminActivity.applyFilter('to',this.value)"></label>
+      <button type="button" onclick="TFAdminActivity.clearFilters()">Reset</button>
+    </div>`;
+  }
+  function ledgerContent(){
+    const titles={attendance:'Employee attendance & break logs',leaves:'Employee leave history',timesheets:'Timesheet & work logs'};
+    const d=ui.ledgerData,rows=d?.rows||[];
+    const safe=x=>escHtml(x===undefined||x===null||x===''?'—':x);
+    const pill=x=>`<span class="tf-ac-tag tf-ac-state">${safe(x)}</span>`;
+    const person=r=>`<button type="button" class="tf-ac-person-link" onclick="TFAdminActivity.applyFilter('employeeId','${Number(r.employeeId)}')">${safe(r.employee)}</button>`;
+    let headings=[],body=[];
+    if(ui.tab==='attendance'){
+      headings=['Employee','Date','Clock in','Clock out','Break time','Worked','Mode','Status'];
+      body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(statusTime(r.date))}</td><td>${safe(at(r.clockIn))}</td><td>${safe(at(r.clockOut))}</td><td>${safe(r.breakMinutes)} min${r.breakStartedAt?'<small>Live break</small>':''}</td><td>${hours(r.workedMinutes)}</td><td>${safe(r.mode)}</td><td>${pill(r.status)}${r.note?`<small>${safe(r.note)}</small>`:''}</td></tr>`);
+    }else if(ui.tab==='leaves'){
+      headings=['Employee','Leave type','Period','Days','Status','Submitted','Reviewed by','Reason / decision'];
+      body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(r.type)}</td><td>${safe(statusTime(r.startDate))} – ${safe(statusTime(r.endDate))}</td><td>${Number(r.days)}</td><td>${pill(r.status)}</td><td>${safe(at(r.submittedAt))}</td><td>${safe(r.reviewedBy)}<small>${safe(at(r.reviewedAt))}</small></td><td><div class="tf-ac-ledger-note">${safe(r.reason)}</div>${r.reviewNote?`<small>Decision: ${safe(r.reviewNote)}</small>`:''}</td></tr>`);
+    }else{
+      headings=['Employee','Work date','Client / project','Work details','Hours','Billing','Status','Reviewed by'];
+      body=rows.map(r=>`<tr><td>${person(r)}</td><td>${safe(statusTime(r.date))}</td><td>${safe(r.client)}<small>${safe(r.project)}</small></td><td>${safe(r.task)}<small>${safe(r.description)}</small></td><td>${hours(r.minutes)}</td><td>${r.billable?'Billable':'Non-billable'}</td><td>${pill(r.status)}</td><td>${safe(r.reviewedBy)}<small>${safe(at(r.reviewedAt))}</small></td></tr>`);
+    }
+    return `<section class="tf-ac-ledger"><div class="tf-ac-pending-head"><h2>${titles[ui.tab]}</h2><p>Choose an employee, a status, or a date range. Records are paginated and limited to Super Admin.</p></div>
+      ${ledgerFilters()}
+      ${ui.ledgerError?`<div class="tf-ac-error" role="alert">${safe(ui.ledgerError)} <button type="button" onclick="TFAdminActivity.refresh()">Retry</button></div>`:''}
+      ${!d&&ui.ledgerLoading?'<div class="tf-ac-loading">Loading employee records…</div>':
+        `<div class="tf-ac-ledger-scroll"><table class="tf-ac-ledger-table"><thead><tr>${headings.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${body.join('')||`<tr><td colspan="8"><div class="tf-ac-empty"><strong>No matching records</strong><p>Try a different employee, date, or status.</p></div></td></tr>`}</tbody></table></div>
+          <div class="tf-ac-ledger-foot"><span>${rows.length} records loaded${d?' · Page '+d.page:''}</span>${d?.hasMore?`<button type="button" onclick="TFAdminActivity.more()" ${ui.ledgerLoading?'disabled':''}>${ui.ledgerLoading?'Loading…':'Load more records'}</button>`:''}</div>`}
+    </section>`;
+  }
   function view(){const s=ui.summary||{};const total=(s.pendingLeaves||0)+(s.pendingTimesheets||0)+(s.pendingApprovals||0);return `<div class="tf-ac-page">
-    <header class="tf-ac-head"><div><span class="tf-ac-overline">SUPER ADMIN / OPERATIONS INTELLIGENCE</span><h1>Activity & approvals</h1><p>Every recorded employee action in one place—review requests, monitor shifts and follow progress.</p></div><div class="tf-ac-head-actions"><button type="button" onclick="notificationCenter()">All notifications</button><button type="button" onclick="TFAdminActivity.markAll()">✓ Mark alerts read</button><button type="button" class="tf-ac-refresh" onclick="TFAdminActivity.refresh()">↻ Refresh</button></div></header>
-    <div class="tf-ac-stats">${card('Needs approval',total,'Pending team requests','◎')}${card('Currently on shift',s.onShift,'Active attendance sessions','◷')}${card('Actions today',s.todayActions,'Employee activity records','⌁')}${card('Unread alerts',s.unread,'New staff updates','♧')}</div>
-    <div class="tf-ac-tabs"><button type="button" class="${ui.tab==='pending'?'active':''}" onclick="TFAdminActivity.switchTab('pending')">Approval queue <b>${total}</b></button><button type="button" class="${ui.tab==='history'?'active':''}" onclick="TFAdminActivity.switchTab('history')">All activity</button><span>${ui.loading?'Updating…':ui.data?'Updated just now':'Ready'}</span></div>
+    <header class="tf-ac-head"><div><span class="tf-ac-overline">SUPER ADMIN / OPERATIONS INTELLIGENCE</span><h1>Employee activity & approvals</h1><p>Review employee requests, attendance, break time, work logs and recorded task activity in one place.</p></div><div class="tf-ac-head-actions"><button type="button" onclick="notificationCenter()">All notifications</button><button type="button" onclick="TFAdminActivity.markAll()">✓ Mark alerts read</button><button type="button" class="tf-ac-refresh" onclick="TFAdminActivity.refresh()">↻ Refresh</button></div></header>
+    <div class="tf-ac-stats">${card('Needs approval',total,'Pending team requests','◎','pending')}${card('Currently on shift',s.onShift,(s.onBreak||0)+' on break now','◷','attendance')}${card('Actions today',s.todayActions,'Recorded employee actions','⌁','history')}${card('Unread alerts',s.unread,'New staff updates','♧','history')}</div>
+    <div class="tf-ac-tabs"><button type="button" class="${ui.tab==='pending'?'active':''}" onclick="TFAdminActivity.switchTab('pending')">Approval queue <b>${total}</b></button><button type="button" class="${ui.tab==='history'?'active':''}" onclick="TFAdminActivity.switchTab('history')">All activity</button><button type="button" class="${ui.tab==='attendance'?'active':''}" onclick="TFAdminActivity.switchTab('attendance')">Attendance & breaks</button><button type="button" class="${ui.tab==='leaves'?'active':''}" onclick="TFAdminActivity.switchTab('leaves')">Leave history</button><button type="button" class="${ui.tab==='timesheets'?'active':''}" onclick="TFAdminActivity.switchTab('timesheets')">Timesheets</button><span>${ui.loading?'Updating…':ui.data?'Updated just now':'Ready'}</span></div>
     ${ui.error?`<div class="tf-ac-error" role="alert">${escHtml(ui.error)} <button onclick="TFAdminActivity.refresh()">Retry</button></div>`:''}
-    ${ui.tab==='pending'?pending():history()}
+    ${ui.tab==='pending'?pending():ui.tab==='history'?history():ledgerContent()}
     ${ui.loading&&!ui.data?'<div class="tf-ac-loading">Loading team events…</div>':''}
     <div class="tf-ac-note">Activity is visible only to Super Admin. Entries reflect actions recorded by the CRM, not activity outside the application. Internal messages are shown as metadata, not private message contents.</div>
   </div>`;}
@@ -85,10 +145,10 @@
   const previousRender=render;
   render=function(){previousRender();if(!isAdmin()||state.loading||state.error)return;updateBadges();if(state.tab==='admin_activity'){draw();if(!ui.data&&!ui.loading)queueMicrotask(()=>fetchEvents());}else if(state.tab==='overview')renderSummary();};
   window.render=render;
-  window.TFAdminActivity={show,applyFilter,search,clearFilters,switchTab,refresh:()=>fetchEvents(),more:()=>fetchEvents(true),markAll,review};
+  window.TFAdminActivity={show,applyFilter,search,clearFilters,switchTab,ledgerStatus,refresh:()=>isLedger()?fetchLedger(1):fetchEvents(),more:()=>isLedger()?fetchLedger((ui.ledgerData?.page||1)+1):fetchEvents(true),markAll,review};
   if(location.hash==='#admin_activity'){state.tab='admin_activity';if(!state.loading)render();}
   // In-app polling requires neither costly WebSockets nor a background worker.
-  setInterval(()=>{if(document.visibilityState!=='visible'||!isAdmin())return;summary();if(state.tab==='admin_activity'&&!ui.loading&&!ui.next)fetchEvents(false,true);},30000);
+  setInterval(()=>{if(document.visibilityState!=='visible'||!isAdmin())return;summary();if(state.tab==='admin_activity'&&!isLedger()&&!ui.loading&&!ui.next)fetchEvents(false,true);},30000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isAdmin())summary();});
   if(isAdmin())summary();
 })();

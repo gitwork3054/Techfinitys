@@ -115,6 +115,9 @@ def login_view(request):
         user = authenticate(request, username=request.POST.get('username',''), password=request.POST.get('password',''))
         if user:
             login(request, user)
+            membership = _member_for_user(user)
+            if membership and membership.role in ('employee', 'manager'):
+                _log(membership, 'Signed in', detail='Password sign-in')
             return redirect('/')
         error = 'Invalid username or password.'
     return render(request, 'workspace/login.html', {
@@ -125,6 +128,9 @@ def login_view(request):
 
 
 def logout_view(request):
+    membership = _member_for_user(request.user)
+    if membership and membership.role in ('employee', 'manager'):
+        _log(membership, 'Signed out', detail='Session signed out')
     logout(request)
     return redirect('/login/')
 

@@ -133,6 +133,9 @@ def google_callback(request):
                 membership.google_sub = sub
                 membership.save(update_fields=['google_sub'])
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        if membership.role in ('employee', 'manager'):
+            from .views import _log
+            _log(membership, 'Signed in', detail='Google sign-in')
         return redirect(next_url if url_has_allowed_host_and_scheme(next_url,
             allowed_hosts={request.get_host()}, require_https=request.is_secure()) else '/')
     except IntegrityError:

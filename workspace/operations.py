@@ -270,17 +270,18 @@ def operations_api(request):
                     elif action == 'end_break':
                         if not a.break_started_at:
                             raise ValueError('No break is running')
-                        a.break_seconds += max(0,int((now-a.break_started_at).total_seconds()))
+                        elapsed = max(0, int((now-a.break_started_at).total_seconds()))
+                        a.break_seconds += elapsed
                         a.break_started_at = None
                         a.save(update_fields=['break_seconds','break_started_at'])
-                        _log(member,'Resumed work',a,detail='Break ended')
+                        _log(member,'Resumed work',a,detail=f'Break lasted {round(elapsed / 60, 1)} minutes; total breaks {round(a.break_seconds / 60, 1)} minutes')
                     else:
                         if a.break_started_at:
                             a.break_seconds += max(0,int((now-a.break_started_at).total_seconds()))
                             a.break_started_at = None
                         a.clock_out = now
                         a.save(update_fields=['clock_out','break_seconds','break_started_at'])
-                        _log(member,'Clocked out',a,detail=f'{a.worked_seconds//60} minutes worked')
+                        _log(member,'Clocked out',a,detail=f'{round(a.worked_seconds / 60, 1)} minutes worked; {round(a.break_seconds / 60, 1)} minutes on break')
                 return JsonResponse({'ok':True})
 
             if action == 'request_leave':
@@ -294,7 +295,7 @@ def operations_api(request):
                     {'annual','sick','casual','unpaid','other'},'leave type'),start_date=start,end_date=end,
                     reason=_str(data.get('reason'),'Reason',2000,False))
                 _notify_managers(f'Leave approval: {_person(member)}',f'{start} to {end}',include_admins=False)
-                _log(member,'Requested leave',r,detail=f'{start} – {end}')
+                _log(member,'Requested leave',r,detail=f'{r.get_leave_type_display()}: {start} to {end}')
                 return JsonResponse({'ok':True,'id':str(r.id)})
 
             if action == 'review_leave':
@@ -310,7 +311,7 @@ def operations_api(request):
                 r.reviewed_at=now; r.reviewed_by=member
                 r.save()
                 _notify(r.employee, f'Leave {r.status}', r.review_note)
-                _log(member,'Reviewed leave',r,detail=r.status)
+                _log(member,'Reviewed leave',r,detail=f'{_person(r.employee)}: {r.status} ({r.start_date} to {r.end_date})')
                 return JsonResponse({'ok':True})
 
             if action == 'cancel_leave':
