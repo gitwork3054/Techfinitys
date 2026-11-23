@@ -8,7 +8,7 @@ services:
     runtime: python
     plan: free
     region: singapore
-    buildCommand: pip install -r requirements.txt && python manage.py check && python manage.py test workspace.test_billing workspace.test_admin_activity workspace.test_zoho_suite -v 1 && python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py check && python manage.py test workspace.test_billing workspace.test_admin_activity workspace.test_zoho_suite workspace.test_employee_provisioning -v 1 && python manage.py collectstatic --noinput
     startCommand: bash start.sh
     healthCheckPath: /login/
     envVars:
@@ -19,6 +19,8 @@ services:
       - key: CRM_ADMIN_USERNAME
         value: 'admin'
       - key: CRM_ADMIN_PASSWORD
+        generateValue: true
+      - key: CRM_EMPLOYEE_INITIAL_PASSWORD
         generateValue: true
       - key: PYTHON_VERSION
         value: '3.13.2'
