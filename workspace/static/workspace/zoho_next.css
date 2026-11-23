@@ -607,3 +607,18 @@ html[data-theme='dark'] main#mainContent :is(.tf-client-register,.tf-widget,.tf-
 @media(prefers-reduced-motion:reduce){
   html[data-theme='dark'] .shell{background-attachment:scroll!important}
 }
+
+
+/* Shared header refresh control, visible only to employee accounts. */
+#tfEmployeeRefresh[hidden]{display:none!important}
+.topbar .tf-employee-refresh{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:33px;padding:7px 12px;border-radius:9px;
+  color:var(--text)!important;border:1px solid var(--border)!important;
+  background:var(--panel)!important;font-size:11px;font-weight:750;
+  box-shadow:0 0 15px rgba(91,158,255,.14)!important;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.topbar .tf-employee-refresh:hover{color:var(--accent)!important;border-color:var(--accent)!important;box-shadow:0 0 18px rgba(76,170,255,.33)!important}
+.topbar .tf-employee-refresh[aria-busy='true']{opacity:.72;cursor:progress}
+@media(max-width:800px){.topbar .tf-employee-refresh{padding:7px 9px}.topbar .tf-employee-refresh span{display:none}}
