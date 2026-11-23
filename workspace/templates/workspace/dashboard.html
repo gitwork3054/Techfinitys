@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="{% static 'workspace/billing.css' %}?v=20261118-billing-1">
 <link rel="stylesheet" href="{% static 'workspace/admin_activity.css' %}?v=20261118-activity-1">
 <link rel="stylesheet" href="{% static 'workspace/admin_activity_ledgers.css' %}?v=20261123-employee-ledgers-1">
-<link rel="stylesheet" href="{% static 'workspace/zoho_next.css' %}?v=20261123-aurora-glass-v3-dark">
+<link rel="stylesheet" href="{% static 'workspace/zoho_next.css' %}?v=20261123-employee-refresh-1">
 </head>
 <body>
 <div id="app" class="shell">
@@ -26,7 +26,7 @@
     <div class="sidebar-bottom"><span class="online"></span>Connected workspace<small>Hierarchy-aware access</small></div>
   </aside>
   <div class="main">
-    <header class="topbar"><div class="topbar-left"><span class="crumb">Workspace</span><span>›</span><strong id="crumbTitle">Overview</strong></div><div class="topbar-actions"><button id="commandBtn" class="global-search" type="button" title="Search workspace (Ctrl + K)">⌕ <span>Search anything...</span> <kbd>⌘ K</kbd></button><button id="quickBtn" class="quick-btn" type="button">＋ New</button><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme"><span class="theme-icon">◐</span><span id="themeLabel">Dark</span></button><button class="icon" id="bellBtn">◌</button><button id="topAvatar" class="avatar small tf-profile-trigger" type="button" title="Edit profile" aria-label="Edit your profile">TF</button><a class="toplink" href="/logout/">Sign out</a></div></header>
+    <header class="topbar"><div class="topbar-left"><span class="crumb">Workspace</span><span>›</span><strong id="crumbTitle">Overview</strong></div><div class="topbar-actions"><button id="commandBtn" class="global-search" type="button" title="Search workspace (Ctrl + K)">⌕ <span>Search anything...</span> <kbd>⌘ K</kbd></button><button id="quickBtn" class="quick-btn" type="button">＋ New</button><button id="tfEmployeeRefresh" class="tf-employee-refresh" type="button" aria-label="Refresh employee workspace" title="Refresh tasks, projects and updates" hidden>↻ <span>Refresh</span></button><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme"><span class="theme-icon">◐</span><span id="themeLabel">Dark</span></button><button class="icon" id="bellBtn">◌</button><button id="topAvatar" class="avatar small tf-profile-trigger" type="button" title="Edit profile" aria-label="Edit your profile">TF</button><a class="toplink" href="/logout/">Sign out</a></div></header>
     <div class="demo-bar"><span><i class="online"></i> SECURE WORKSPACE <strong class="demo-trail"> · Client data is isolated by account and role</strong></span><div><span id="todayTop"></span><strong id="rolePill"></strong></div></div>
     <main id="mainContent"><div class="empty">Loading CRM…</div></main>
     <footer><img src="{% static 'images/techfinitys-logo.png' %}" width="24" height="24" alt=""><strong>Techfinitys®</strong><span>Clients, people and delivery — connected.</span><small>Django CRM</small></footer>
@@ -38,7 +38,7 @@
 <div id="toastHost" role="status" aria-live="polite"></div>
 <div id="tfTaskDrawerHost"></div>
 <div id="modalRoot"></div>
-<script src="{% static 'workspace/app.js' %}?v=20261123-clientfix-b"></script>
+<script src="{% static 'workspace/app.js' %}?v=20261123-employee-refresh-1"></script>
 <script src="{% static 'workspace/enterprise.js' %}?v=20261118-projects-plus"></script>
 <script src="{% static 'workspace/projects_plus.js' %}?v=20261123-dashboard-links-1"></script>
 <script src="{% static 'workspace/collaboration.js' %}?v=20261123-project-sync-1"></script>
