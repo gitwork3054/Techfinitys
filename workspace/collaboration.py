@@ -190,7 +190,7 @@ def collaboration_api(request):
                 # WorkChat popups use the same recipient-scoped notification feed
                 # as other CRM alerts. Never notify the sender or nonparticipants.
                 recipients = Member.objects.filter(
-                    chat_participations__conversation=convo,
+                    chat_memberships__conversation=convo,
                     is_active=True, user__is_active=True,
                 ).exclude(pk=actor.pk).distinct()
                 Notification.objects.bulk_create([
