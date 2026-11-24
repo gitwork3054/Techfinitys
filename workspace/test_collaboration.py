@@ -55,6 +55,24 @@ class CollaborationTests(TestCase):
         self.enter(self.client_b)
         self.assertNotIn(str(self.project_a.pk),{p['id'] for p in self.client.get('/api/collaboration/').json()['recentProjects']})
 
+    def test_chat_message_creates_popup_only_for_other_participants(self):
+        from .models import Notification
+        self.enter(self.alice)
+        started = self.call('start_chat',kind='direct',memberIds=[self.bob.pk])
+        self.assertEqual(started.status_code,200,started.content)
+        chat_id=started.json()['conversation']['id']
+        sent=self.call('send_chat',conversationId=chat_id,body='Can you review the design?')
+        self.assertEqual(sent.status_code,200,sent.content)
+        alert=Notification.objects.get(recipient=self.bob,title__startswith='New chat from')
+        self.assertEqual(alert.link,f'#workchat/{chat_id}')
+        self.assertIn('review the design',alert.body)
+        self.assertFalse(Notification.objects.filter(recipient=self.alice,title__startswith='New chat from').exists())
+        self.assertFalse(Notification.objects.filter(recipient=self.outsider,title__startswith='New chat from').exists())
+        self.enter(self.bob)
+        polled=self.client.get('/api/workspace/?notifications_only=1')
+        self.assertEqual(polled.status_code,200,polled.content)
+        self.assertTrue(any(n['link']==f'#workchat/{chat_id}' for n in polled.json()['notifications']))
+
     def test_direct_messages_require_membership_and_clients_are_excluded(self):
         self.enter(self.alice)
         r=self.call('start_chat',kind='direct',memberIds=[self.bob.pk])
