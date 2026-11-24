@@ -99,3 +99,14 @@ html[data-reduce-motion='yes'] *,html[data-reduce-motion='yes'] *::before,html[d
 }
 .tf-prefs-account-security .os-settings-form button{justify-self:start}
 @media(max-width:700px){.tf-prefs-account-security{padding:18px}}
+
+
+.tf-prefs-sound-test{
+ display:inline-flex;align-items:center;gap:6px;
+ margin:10px 0 8px;padding:9px 14px;
+ background:var(--accent-soft)!important;color:var(--accent)!important;
+ border:1px solid var(--accent)!important;border-radius:9px;
+ font-size:12px;font-weight:750;cursor:pointer;
+}
+.tf-prefs-sound-test:hover{filter:brightness(1.08)}
+.tf-prefs-sound-test:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
