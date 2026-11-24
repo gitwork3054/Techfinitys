@@ -2,7 +2,7 @@
 (function(){
  'use strict';
  const defaults={fontSize:'normal',mode:'light',accent:'blue',panel:'aurora',landingPage:'overview',
-   reduceMotion:false,highContrast:false,compactMode:false,feedNotifications:true,emailNotifications:true,activityReminders:true};
+   reduceMotion:false,highContrast:false,compactMode:false,feedNotifications:true,soundNotifications:true,emailNotifications:true,activityReminders:true};
  const landing=[['overview','Home'],['projects','Projects'],['tasks','My tasks'],['updates','Updates']];
  const colors=[['blue','#2978eb'],['orange','#fb831c'],['teal','#05bcb4'],['red','#f44351'],['green','#0abf67'],['purple','#8069ed']];
  let prefs={...defaults},account=null,initial=false,saving=false;
@@ -81,7 +81,7 @@
   '<div class="tf-prefs-row"><strong>Font size</strong><div class="tf-prefs-options">'+choice('fontSize','small','Small','<b class="tf-font-sample" style="font-size:13px">Aa</b>')+choice('fontSize','normal','Default','<b class="tf-font-sample" style="font-size:16px">Aa</b>')+choice('fontSize','large','Large','<b class="tf-font-sample" style="font-size:20px">Aa</b>')+choice('fontSize','extra','Extra large','<b class="tf-font-sample" style="font-size:24px">Aa</b>')+'</div></div></section>'+
   '<section class="tf-prefs-section"><div class="tf-prefs-row"><strong>Landing page</strong><div class="tf-prefs-options">'+landing.map(([key,value])=>choice('landingPage',key,'<span class="tf-landing-symbol">'+({overview:'▦',projects:'◇',tasks:'☑',updates:'↻'}[key])+'</span>'+value)).join('')+'</div></div></section>'+
   '<section id="tfPersonalAccess" class="tf-prefs-section"><h2>Accessibility</h2>'+switcher('highContrast','High contrast','Boost text and border visibility')+switcher('reduceMotion','Reduce motion','Turn off decorative background animations')+switcher('compactMode','Compact spacing','Display more information on each screen')+'</section>'+
-  '<section class="tf-prefs-section"><h2>Notification preferences</h2><p>These are personal notification preferences; delivery channels require their corresponding service configuration.</p>'+switcher('feedNotifications','Feed notifications','Preference for activity feed updates')+switcher('emailNotifications','Personal email','Preference for email updates')+switcher('activityReminders','Activity reminders','Preference for upcoming activity reminders')+'</section>'+
+  '<section class="tf-prefs-section"><h2>Notification preferences</h2><p>These are personal notification preferences; delivery channels require their corresponding service configuration.</p>'+switcher('feedNotifications','Feed notifications','Show notification popups')+switcher('soundNotifications','Notification sound','Play a gentle chime when a popup appears')+'<button type="button" class="tf-prefs-sound-test" onclick="TFNotificationSounds.test()">♫ Test notification sound</button>'+switcher('emailNotifications','Personal email','Preference for email updates')+switcher('activityReminders','Activity reminders','Preference for upcoming activity reminders')+'</section>'+
   '</div>';
  }
  // Delegated controls keep working after the SPA re-renders Settings.
