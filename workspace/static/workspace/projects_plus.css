@@ -176,3 +176,16 @@ body[data-crm-role="employee"] .tf-widget-stats .tf-metric-grid:has(.tf-metric:n
 /* Keep sortable header controls aligned with hidden table columns on mobile. */
 @media(max-width:850px){.tf-home-tasks-thead>button:nth-child(2),.tf-home-tasks-thead>button:nth-child(3){display:none}}
 @media(max-width:520px){.tf-home-tasks-thead>button:nth-child(5){display:none}}
+
+
+/* Staff project update photo attachments and inline feed previews */
+.tf-update-photo-label{display:grid;gap:7px;color:var(--text);font-size:12px;font-weight:750}
+.tf-update-photo-label input[type="file"]{width:100%;padding:10px;background:var(--raised);border:1px dashed var(--border);border-radius:10px;color:var(--text)}
+.tf-update-photo-label small{font-size:11px;color:var(--muted);font-weight:500}
+.tf-update-photo-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--raised);border:1px solid var(--border);padding:11px;border-radius:12px}
+.tf-update-photo-preview[hidden]{display:none!important}
+.tf-update-photo-preview img{height:84px;width:112px;object-fit:cover;border-radius:9px}
+.tf-update-photo-preview span{flex:1;min-width:120px;color:var(--text);font-size:12px;overflow-wrap:anywhere}
+.tf-update-photo-preview button{color:var(--accent);background:transparent!important;border:1px solid var(--border)!important;border-radius:8px;padding:7px 11px}
+.tf-feed-image-link{display:block;max-width:440px;width:100%;margin:10px 0;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.tf-feed-photo{display:block;width:100%;max-height:320px;object-fit:contain;background:var(--raised)}
