@@ -337,12 +337,15 @@ def projects_plus_api(request):
                     _can_edit_task(member, task)
                     if target == 'completed' and task.blocked_by_id and task.blocked_by.status != 'completed':
                         raise ValueError(f'Complete the dependency of {task.title} first')
+                    old_status = task.status
                     task.status = target
                     task.completed_at = timezone.now() if target == 'completed' else None
                     task.percent_complete = 100 if target == 'completed' else min(task.percent_complete, 99)
                     task.save(update_fields=['status', 'completed_at', 'percent_complete', 'updated_at'])
                     touched.add(task.project_id)
                     _log(member, 'Bulk changed task status', task, task.client, target)
+                    from .views import _run_task_workflows
+                    _run_task_workflows(task, old_status, member)
                 for pk in touched:
                     _recalculate_project(pk)
                 return JsonResponse({'ok': True, 'updated': len(tasks)})
