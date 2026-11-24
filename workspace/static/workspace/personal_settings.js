@@ -63,10 +63,10 @@
  const selected=(key,value)=>prefs[key]===value?' selected':'';
  const pressed=(key,value)=>prefs[key]===value?'true':'false';
  function choice(key,value,label,extra=''){
-  return '<button type="button" class="tf-prefs-choice'+selected(key,value)+'" aria-pressed="'+pressed(key,value)+'" onclick="TFPreferences.set('+JSON.stringify(key)+','+JSON.stringify(value)+')">'+extra+label+'</button>';
+  return '<button type="button" class="tf-prefs-choice'+selected(key,value)+'" data-tf-pref-key="'+key+'" data-tf-pref-value="'+value+'" aria-pressed="'+pressed(key,value)+'">'+extra+label+'</button>';
  }
  function switcher(key,label,description){
-  return '<label class="tf-prefs-switch"><span><strong>'+label+'</strong><small>'+description+'</small></span><input type="checkbox" '+(prefs[key]?'checked':'')+' onchange="TFPreferences.set('+JSON.stringify(key)+',this.checked)"></label>';
+  return '<label class="tf-prefs-switch"><span><strong>'+label+'</strong><small>'+description+'</small></span><input type="checkbox" data-tf-pref-toggle="'+key+'" '+(prefs[key]?'checked':'')+'></label>';
  }
  function renderSettings(){
   const person=window.state?.ctx||{};
@@ -84,6 +84,20 @@
   '<section class="tf-prefs-section"><h2>Notification preferences</h2><p>These are personal notification preferences; delivery channels require their corresponding service configuration.</p>'+switcher('feedNotifications','Feed notifications','Preference for activity feed updates')+switcher('emailNotifications','Personal email','Preference for email updates')+switcher('activityReminders','Activity reminders','Preference for upcoming activity reminders')+'</section>'+
   '</div>';
  }
+ // Delegated controls keep working after the SPA re-renders Settings.
+ document.addEventListener('click',event=>{
+   const control=event.target.closest?.('button[data-tf-pref-key]');
+   if(!control)return;
+   const key=control.dataset.tfPrefKey;
+   const value=control.dataset.tfPrefValue;
+   if(Object.hasOwn(defaults,key))set(key,value);
+ });
+ document.addEventListener('change',event=>{
+   const control=event.target.closest?.('input[data-tf-pref-toggle]');
+   if(!control)return;
+   const key=control.dataset.tfPrefToggle;
+   if(Object.hasOwn(defaults,key))set(key,control.checked);
+ });
  window.TFPreferences={receive,set,renderSettings};
  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(prefs.mode==='auto')apply()});
 })();
