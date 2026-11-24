@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from workspace.models import ClientAccount, ClientAssignment, Member, Project, Task
+from workspace.models import ClientAccount, ClientAssignment, Member, Project, Task, Notification
 
 
 DEMO_CLIENTS = [
@@ -77,6 +77,17 @@ class Command(BaseCommand):
                         },
                     )
                     counts["assignments"] += int(new_assignment)
+
+                    # One demo inbox alert per employee. Existing notifications
+                    # are preserved on normal restarts instead of spamming users.
+                    Notification.objects.get_or_create(
+                        recipient=employee, client=client,
+                        title='DEMO | Your assigned project is ready',
+                        defaults={
+                            'body': f'Explore the sample tasks for {client.name}.',
+                            'link': '#projects',
+                        },
+                    )
 
                 for project_index, (title, description) in enumerate(PROJECT_DEFINITIONS):
                     stable_project_id = uuid5(NAMESPACE_URL, f"techfinitys-demo-project:{code}:{project_index}")
