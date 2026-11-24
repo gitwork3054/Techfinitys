@@ -391,6 +391,7 @@ def workspace_api(request):
                     'highContrast': (True,False),
                     'compactMode': (True,False),
                     'feedNotifications': (True,False),
+                    'soundNotifications': (True,False),
                     'emailNotifications': (True,False),
                     'activityReminders': (True,False),
                 }
