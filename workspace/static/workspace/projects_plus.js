@@ -233,13 +233,16 @@
   // Draft entry lives *inside* the task table. Save on Enter or with the Add button;
   // leaving the field does not unexpectedly create a client-visible task.
   function quickTaskRow(projectId,taskListId='',listName='General'){
+    const projectSelector=isEmployee()&&!projectId
+      ?`<label class="tf-inline-project-label">Project <select class="tf-inline-project" aria-label="Choose project for new task"><option value="">Select project…</option>${state.projects.map(p=>`<option value="${safe(p.id)}">${safe(p.title)} · ${safe(p.clientName)}</option>`).join('')}</select></label>`
+      :'';
     return `<tr class="tf-quick-task-row"><td></td><td class="tf-quick-plus">＋</td>
       <td class="tf-quick-title"><div class="tf-quick-wrap">
         <input class="tf-quick-input" data-project-id="${safe(projectId)}" data-list-id="${safe(taskListId)}"
           type="text" maxlength="220" autocomplete="off" aria-label="Add task to ${safe(listName||'General')}"
           placeholder="Add task…" onkeydown="TFPlus.quickTaskKey(event,this)">
         <button type="button" class="tf-quick-save" onclick="TFPlus.quickTaskButton(this)" title="Save task" aria-label="Save new task">Add ↵</button>
-      </div></td><td colspan="8"><span class="tf-quick-hint">${safe(listName||'General')} · Enter to add · Esc to clear</span></td></tr>`;
+      </div></td><td colspan="8"><span class="tf-quick-hint">${safe(listName||'General')} · Enter to add · Esc to clear</span>${projectSelector}</td></tr>`;
   }
   function taskDateControl(t,field){
     if(!isManager())return date(t[field]);
@@ -266,17 +269,30 @@
     catch(ex){input.value=previous;input.disabled=false;error(ex);}
   }
   async function quickCreateTask(input){
-    if(!isManager()||!input||ui.quickBusy)return;
+    if(!(isManager()||isEmployee())||!input||ui.quickBusy)return;
     const title=String(input.value||'').trim();
     if(!title){input.focus();return;}
     if(title.length>220){error(new Error('Task name must be 220 characters or fewer'));return;}
-    const projectId=input.dataset.projectId||'',taskListId=input.dataset.listId||'';
-    if(!projectId){error(new Error('Open a project before adding a task inline'));return;}
+    const projectId=input.dataset.projectId||input.closest('tr')?.querySelector('.tf-inline-project')?.value||'';
+    const taskListId=input.dataset.listId||'';
+    if(!projectId){error(new Error('Select a project before adding a task'));return;}
     ui.quickBusy=true;input.disabled=true;
     const addButton=input.closest('tr')?.querySelector('.tf-quick-save');if(addButton)addButton.disabled=true;
     try{
-      await plusPost({action:'quick_create_task',projectId,taskListId,title});
-      const next=[...document.querySelectorAll('.tf-quick-input')].find(el=>el.dataset.projectId===projectId&&el.dataset.listId===taskListId);
+      if(isEmployee()){
+        const response=await fetch('/api/workspace/',{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json','X-CSRFToken':decodeURIComponent(cookie('csrftoken'))},
+          body:JSON.stringify({action:'self_create_task',projectId,title,priority:'normal'})
+        });
+        const result=await response.json();
+        if(!response.ok)throw Error(result.error||'Task could not be created');
+        await load();
+      }else{
+        await plusPost({action:'quick_create_task',projectId,taskListId,title});
+      }
+      const next=[...document.querySelectorAll('.tf-quick-input')].find(el=>
+        el.dataset.projectId===input.dataset.projectId&&el.dataset.listId===taskListId);
       if(next)next.focus();
     }catch(ex){input.disabled=false;if(addButton)addButton.disabled=false;error(ex);input.focus();}
     finally{ui.quickBusy=false;}
@@ -297,7 +313,7 @@
     const head=(field,label)=>`<button class="tf-column" onclick="TFPlus.sortTasks('${field}')">${label}${ui.sort===field?(ui.desc?' ↓':' ↑'):''}</button>`;
     let tr='';let previous='',previousListId='';
     for(const t of visible){const current=groupKey(t);if(group!=='none'&&current!==previous){
-      if(previous&&projectId&&isManager()&&group==='taskList')tr+=quickTaskRow(projectId,previousListId,previous);
+      if(previous&&projectId&&(isManager()||isEmployee())&&group==='taskList')tr+=quickTaskRow(projectId,previousListId,previous);
       previous=current;previousListId=t.taskListId||'';
       tr+=`<tr class="tf-group-row"><td colspan="11">⌄ <strong>${safe(current)}</strong> <small>${groups.get(current)?.length||0} tasks</small></td></tr>`;
     }
@@ -312,7 +328,7 @@
         <td>${t.estimatedHours?`${t.estimatedHours}h`:'—'}</td><td>${statusPill(t.priority)}</td></tr>`;
     }
     // Keep one entry row at the end of each task list, as in spreadsheet-style project tools.
-    if(projectId&&isManager())tr+=quickTaskRow(projectId,group==='taskList'?previousListId:'',group==='taskList'?previous:'General');
+    if(isManager()||isEmployee())tr+=quickTaskRow(projectId,group==='taskList'?previousListId:'',group==='taskList'?previous:'General');
     return `<section class="tf-pane tf-list-pane"><div class="tf-list-title"><span>Group by: <b>${safe(group==='taskList'?'Task List':group==='none'?'None':group)}</b> · ${fmtCount(all)} tasks</span>${isManager()&&projectId?button('＋ Add task list',`TFPlus.taskListModal('${projectId}')`):''}</div>
       ${ui.selected.size&&isManager()?`<div class="tf-bulk-bar"><b>${ui.selected.size} selected</b>${button('Mark completed',"TFPlus.bulkStatus('completed')",'primary')}${button('In progress',"TFPlus.bulkStatus('in_progress')")}${button('Clear',"TFPlus.clearSelection()")}</div>`:''}
       <div class="tf-table-scroll"><table class="tf-grid tf-task-table"><thead><tr><th class="tf-check-td">${isManager()?`<input type="checkbox" aria-label="Select visible tasks" onchange="TFPlus.selectVisibleTasks(this.checked)">`:''}</th><th>ID</th><th>${head('title','Task name')}</th><th>Project</th><th>${head('owner','Owner')}</th><th>${head('status','Status')}</th><th>Tags</th><th>Start date</th><th>${head('dueAt','Due date')}</th><th>Duration</th><th>${head('priority','Priority')}</th></tr></thead><tbody>${tr||`<tr><td colspan="11">${empty('No tasks found','Change filters or create your first task.')}</td></tr>`}</tbody></table></div>
