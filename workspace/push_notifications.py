@@ -10,6 +10,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
@@ -58,6 +60,40 @@ def push_config(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     key = os.environ.get('WEB_PUSH_VAPID_PUBLIC_KEY', '')
     return JsonResponse({'available': bool(key and os.environ.get('WEB_PUSH_VAPID_PRIVATE_KEY')), 'publicKey': key if key else ''})
+
+
+@login_required
+@require_GET
+def push_status(request):
+    """Safe diagnostics for the currently signed-in CRM account only."""
+    member = _member(request)
+    if not member:
+        return JsonResponse({'error': 'Account unavailable'}, status=403)
+    enabled = bool(os.environ.get('WEB_PUSH_VAPID_PUBLIC_KEY') and os.environ.get('WEB_PUSH_VAPID_PRIVATE_KEY'))
+    return JsonResponse({
+        'serverEnabled': enabled,
+        'subscriptions': PushSubscription.objects.filter(member=member).count(),
+    })
+
+
+@login_required
+@require_POST
+def push_test(request):
+    """One opt-in delivery test per account per minute, scoped to its own inbox."""
+    member = _member(request)
+    if not member:
+        return JsonResponse({'error': 'Account unavailable'}, status=403)
+    if not PushSubscription.objects.filter(member=member).exists():
+        return JsonResponse({'error': 'Enable desktop notifications in this Chrome profile first.'}, status=400)
+    if not cache.add(f'tf-push-test:{member.pk}', True, timeout=60):
+        return JsonResponse({'error': 'A test was already sent recently. Try again after one minute.'}, status=429)
+    Notification.objects.create(
+        recipient=member,
+        title='Techfinitys desktop notification test',
+        body='Your Chrome profile is registered for CRM desktop alerts.',
+        link='#settings',
+    )
+    return JsonResponse({'ok': True, 'message': 'Test notification queued for your registered browsers.'})
 
 
 @login_required
