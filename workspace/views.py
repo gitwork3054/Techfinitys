@@ -420,15 +420,70 @@ def workspace_api(request):
                 target = Member.objects.select_related('user').get(pk=data.get('memberId'))
                 if not _can_access_member(member,target):
                     raise PermissionError('Cannot manage this user')
-                if 'active' in data: target.is_active = bool(data['active'])
-                if 'department' in data: target.department = data['department']
-                if 'jobTitle' in data: target.job_title = data['jobTitle']
+                if target.role == 'admin' and member.role != 'admin':
+                    raise PermissionError('Only Super Admin can manage administrators')
+                if target.pk == member.pk and 'active' in data and not data['active']:
+                    raise PermissionError('Cannot deactivate your own account')
+                if 'role' in data:
+                    new_role = data['role']
+                    if new_role not in ('employee', 'manager', 'admin'):
+                        raise ValueError('Invalid staff role')
+                    if member.role != 'admin' and new_role != target.role:
+                        raise PermissionError('Only Super Admin can change roles')
+                    if target.pk == member.pk and new_role != 'admin':
+                        raise PermissionError('Cannot remove your own Super Admin role')
+                    target.role = new_role
+                if 'active' in data:
+                    target.is_active = bool(data['active'])
+                    target.user.is_active = bool(data['active'])
+                if 'department' in data: target.department = str(data['department']).strip()[:100]
+                if 'jobTitle' in data: target.job_title = str(data['jobTitle']).strip()[:120]
+                if 'phone' in data: target.phone = str(data['phone']).strip()[:40]
                 if 'managerId' in data:
-                    target.manager = Member.objects.filter(pk=data.get('managerId')).first()
+                    manager_id = data.get('managerId')
+                    manager_obj = Member.objects.filter(pk=manager_id, role__in=('manager','admin')).first() if manager_id else None
+                    if manager_id and not manager_obj:
+                        raise ValueError('Reporting manager not found')
+                    if manager_obj and manager_obj.pk == target.pk:
+                        raise ValueError('Employees cannot report to themselves')
+                    target.manager = manager_obj
                 if 'permissions' in data: target.permissions = data.get('permissions') or []
+                user = target.user
+                for key, attr, max_len in [('firstName','first_name',150),('lastName','last_name',150),('email','email',254)]:
+                    if key in data: setattr(user, attr, str(data[key]).strip()[:max_len])
+                if 'username' in data:
+                    username = str(data['username']).strip()
+                    if not username or len(username)>150 or User.objects.exclude(pk=user.pk).filter(username=username).exists():
+                        raise ValueError('Username must be unique and not empty')
+                    user.username = username
+                if data.get('password'):
+                    if member.role != 'admin':
+                        raise PermissionError('Only Super Admin can reset employee passwords')
+                    if len(str(data['password'])) < 4:
+                        raise ValueError('Password must have at least 4 characters')
+                    user.set_password(str(data['password']))
+                user.save()
                 target.save()
-                _log(member,'Updated team member',target,target.client_account,'Hierarchy/permissions updated')
-                return JsonResponse({'ok':True})
+                _log(member,'Updated team member',target,target.client_account,'Profile, hierarchy or access updated')
+                return JsonResponse({'ok':True,'member':_member_json(target)})
+
+            if action == 'delete_member':
+                if member.role != 'admin':
+                    raise PermissionError('Only Super Admin can delete employee accounts')
+                target = Member.objects.select_related('user').get(pk=data.get('memberId'))
+                if target.pk == member.pk or target.role == 'admin':
+                    raise PermissionError('Super Admin accounts cannot be deleted here')
+                if target.role not in ('employee','manager'):
+                    raise PermissionError('Only employee and manager accounts can be removed here')
+                # Soft-delete preserves attendance, leave, task, project, and audit
+                # history. Disabling Django User also revokes further login access.
+                target.is_active = False
+                target.user.is_active = False
+                target.user.save(update_fields=['is_active'])
+                target.save(update_fields=['is_active'])
+                ClientAssignment.objects.filter(employee=target,active=True).update(active=False)
+                _log(member,'Archived employee account',target,detail=f'{target.user.username} access disabled')
+                return JsonResponse({'ok':True,'archived':True})
 
             if action == 'assign_client':
                 if not _can_manage_people(member):
