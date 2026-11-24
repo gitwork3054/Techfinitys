@@ -727,3 +727,65 @@ main#mainContent .tf-quick-task-row .tf-quick-hint{color:var(--muted);font-size:
 main#mainContent .tf-inline-project-label{display:inline-flex;align-items:center;gap:7px;margin-left:14px;color:var(--muted);font-size:11px;font-weight:650}
 main#mainContent .tf-inline-project{width:min(290px,30vw);max-width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--raised);color:var(--text)}
 @media(max-width:850px){main#mainContent .tf-inline-project-label{margin:7px 0 0;display:flex}main#mainContent .tf-inline-project{width:230px}}
+
+
+/* Cinematic luminous waves inspired by the supplied dashboard reference.
+   Background-only, pointer-events disabled: no buttons, panels, or scrollbars obstructed. */
+html[data-theme='light'] .shell{
+  background:
+    radial-gradient(ellipse 36% 33% at 21% 16%,rgba(55,206,255,.68),transparent 100%),
+    radial-gradient(ellipse 41% 39% at 88% 17%,rgba(255,111,192,.58),transparent 100%),
+    radial-gradient(ellipse 45% 41% at 46% 65%,rgba(155,136,252,.43),transparent 100%),
+    radial-gradient(ellipse 39% 33% at 90% 92%,rgba(255,179,134,.49),transparent 100%),
+    linear-gradient(125deg,#d7f2ff 0%,#d9e9ff 30%,#f1dcff 57%,#ffe0ee 80%,#fff1df 100%)!important;
+}
+html[data-theme='dark'] .shell{
+  background:
+    radial-gradient(ellipse 40% 37% at 15% 18%,rgba(0,159,247,.40),transparent 100%),
+    radial-gradient(ellipse 41% 41% at 85% 17%,rgba(201,48,192,.37),transparent 100%),
+    radial-gradient(ellipse 47% 44% at 44% 70%,rgba(93,61,212,.42),transparent 100%),
+    radial-gradient(ellipse 35% 35% at 90% 93%,rgba(207,52,127,.31),transparent 100%),
+    linear-gradient(128deg,#08182f 0%,#12183e 38%,#291941 72%,#0c203b 100%)!important;
+}
+html[data-theme='light'] .main,
+html[data-theme='dark'] .main{position:relative;isolation:isolate;background:transparent!important;}
+html[data-theme='light'] .main::before,
+html[data-theme='dark'] .main::before{
+  content:"";display:block;position:fixed;inset:0 0 0 228px;
+  z-index:0;pointer-events:none;opacity:.95;
+  background-repeat:no-repeat;
+  background-position:center center;
+  background-size:100% 100%;
+}
+html[data-theme='light'] .main::before{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201440%20900%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%3E%3Cstop%20stop-color%3D%22%2331daff%22%20stop-opacity%3D%220%22%2F%3E%3Cstop%20offset%3D%22.36%22%20stop-color%3D%22%2385e8ff%22%20stop-opacity%3D%22.84%22%2F%3E%3Cstop%20offset%3D%22.68%22%20stop-color%3D%22%23ffa6e7%22%20stop-opacity%3D%22.94%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ffb8a6%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22b%22%3E%3Cstop%20stop-color%3D%22%23fff%22%20stop-opacity%3D%220%22%2F%3E%3Cstop%20offset%3D%22.38%22%20stop-color%3D%22%23ffffff%22%20stop-opacity%3D%22.8%22%2F%3E%3Cstop%20offset%3D%22.72%22%20stop-color%3D%22%238fe8ff%22%20stop-opacity%3D%22.72%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23fff%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22blur%22%3E%3CfeGaussianBlur%20stdDeviation%3D%2211%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M-125%20195%20C210%2035%20360%20258%20640%2092%20S1065%2050%201550%20205%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2223%22%20opacity%3D%22.62%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M-125%20195%20C210%2035%20360%20258%20640%2092%20S1065%2050%201550%20205%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%222%22%20opacity%3D%22.76%22%2F%3E%3Cpath%20d%3D%22M-100%20760%20C190%20545%20360%20922%20665%20724%20S1070%20666%201550%20778%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2228%22%20opacity%3D%22.62%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M-100%20760%20C190%20545%20360%20922%20665%20724%20S1070%20666%201550%20778%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%222%22%20opacity%3D%22.78%22%2F%3E%3Cpath%20d%3D%22M720%20180%20C910%2075%201040%20250%201190%20125%20S1380%2095%201500%20165%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2215%22%20opacity%3D%22.55%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M720%20180%20C910%2075%201040%20250%201190%20125%20S1380%2095%201500%20165%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%221.7%22%20opacity%3D%22.8%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");}
+html[data-theme='dark'] .main::before{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201440%20900%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%3E%3Cstop%20stop-color%3D%22%2300b9ff%22%20stop-opacity%3D%220%22%2F%3E%3Cstop%20offset%3D%22.36%22%20stop-color%3D%22%2324c9ff%22%20stop-opacity%3D%22.84%22%2F%3E%3Cstop%20offset%3D%22.68%22%20stop-color%3D%22%23e653ff%22%20stop-opacity%3D%22.94%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ff78ae%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22b%22%3E%3Cstop%20stop-color%3D%22%23fff%22%20stop-opacity%3D%220%22%2F%3E%3Cstop%20offset%3D%22.38%22%20stop-color%3D%22%23ffffff%22%20stop-opacity%3D%22.8%22%2F%3E%3Cstop%20offset%3D%22.72%22%20stop-color%3D%22%235a96ff%22%20stop-opacity%3D%22.72%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23fff%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22blur%22%3E%3CfeGaussianBlur%20stdDeviation%3D%2211%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M-125%20195%20C210%2035%20360%20258%20640%2092%20S1065%2050%201550%20205%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2223%22%20opacity%3D%22.62%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M-125%20195%20C210%2035%20360%20258%20640%2092%20S1065%2050%201550%20205%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%222%22%20opacity%3D%22.76%22%2F%3E%3Cpath%20d%3D%22M-100%20760%20C190%20545%20360%20922%20665%20724%20S1070%20666%201550%20778%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2228%22%20opacity%3D%22.62%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M-100%20760%20C190%20545%20360%20922%20665%20724%20S1070%20666%201550%20778%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%222%22%20opacity%3D%22.78%22%2F%3E%3Cpath%20d%3D%22M720%20180%20C910%2075%201040%20250%201190%20125%20S1380%2095%201500%20165%22%20stroke%3D%22url(%23a)%22%20stroke-width%3D%2215%22%20opacity%3D%22.55%22%20filter%3D%22url(%23blur)%22%2F%3E%3Cpath%20d%3D%22M720%20180%20C910%2075%201040%20250%201190%20125%20S1380%2095%201500%20165%22%20stroke%3D%22url(%23b)%22%20stroke-width%3D%221.7%22%20opacity%3D%22.8%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");opacity:.87;}
+html[data-theme='light'] .main::after,
+html[data-theme='dark'] .main::after{
+  content:"";position:fixed;z-index:0;pointer-events:none;
+  top:0;bottom:0;left:228px;right:0;opacity:.47;
+  background-image:radial-gradient(circle,rgba(255,255,255,.85) 1px,transparent 1.3px);
+  background-size:11px 11px;
+  -webkit-mask-image:radial-gradient(ellipse 8% 10% at 83% 15%,black,transparent 100%),radial-gradient(ellipse 9% 11% at 36% 83%,black,transparent 100%);
+  mask-image:radial-gradient(ellipse 8% 10% at 83% 15%,black,transparent 100%),radial-gradient(ellipse 9% 11% at 36% 83%,black,transparent 100%);
+}
+html[data-theme='light'] .main > *,
+html[data-theme='dark'] .main > *{position:relative;z-index:1;}
+html[data-theme='light'] .main #mainContent,
+html[data-theme='dark'] .main #mainContent{background:transparent!important;}
+/* Cards retain a bright rim; the glow is intentionally strongest on hover. */
+html[data-theme='light'] main#mainContent :is(.tf-pane,.tf-widget,.tf-project-hero,.os-pane,.tf-metric,.record-card,.dash-tile),
+html[data-theme='dark'] main#mainContent :is(.tf-pane,.tf-widget,.tf-project-hero,.os-pane,.tf-metric,.record-card,.dash-tile){
+  box-shadow:var(--glass-glow),0 0 0 1px rgba(255,255,255,.17)!important;
+}
+@media(max-width:850px){
+ html[data-theme='light'] .main::before,html[data-theme='dark'] .main::before,
+ html[data-theme='light'] .main::after,html[data-theme='dark'] .main::after{left:0}
+}
+@media(prefers-reduced-motion:no-preference){
+ html[data-theme='light'] .main::before,
+ html[data-theme='dark'] .main::before{animation:tf-aurora-breathe 16s ease-in-out infinite alternate;}
+}
+@keyframes tf-aurora-breathe{
+ from{opacity:.68;filter:saturate(105%)}
+ to{opacity:1;filter:saturate(135%)}
+}
