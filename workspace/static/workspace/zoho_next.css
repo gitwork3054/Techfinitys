@@ -950,3 +950,33 @@ html[data-theme='dark'] .main > .tf-aurora-ribbons{
   html[data-theme='light'] .main > main#mainContent,
   html[data-theme='dark'] .main > main#mainContent{padding:16px 12px 35px!important}
 }
+
+
+/* Final activity-strip placement guard: after the dashboard heading, in flow. */
+html[data-theme] main#mainContent > #tfAdminOverviewStrip{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  translate:none!important;
+  float:none!important;
+  clear:both!important;
+  display:flex!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-height:66px!important;
+  margin:0 0 20px!important;
+  box-sizing:border-box!important;
+  z-index:auto!important;
+}
+html[data-theme] main#mainContent > .tf-header{
+  position:relative!important;
+  margin:0 0 18px!important;
+  z-index:2;
+}
+html[data-theme] .main>.demo-bar{
+  position:relative!important;
+  isolation:isolate;
+  z-index:11!important;
+  overflow:hidden;
+}
+html[data-theme] .main>.demo-bar > *{position:relative;z-index:1}
