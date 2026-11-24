@@ -4,6 +4,8 @@ urlpatterns=[
  path('sw.js',push_notifications.service_worker,name='push_worker'),
  path('api/push/config/',push_notifications.push_config,name='push_config'),
  path('api/push/subscription/',push_notifications.push_subscription,name='push_subscription'),
+ path('api/push/status/',push_notifications.push_status,name='push_status'),
+ path('api/push/test/',push_notifications.push_test,name='push_test'),
 
  path('api/admin-activity/',activity_center.admin_activity_api,name='admin_activity_api'),
  path('api/billing/', billing.billing_api, name='billing_api'),
