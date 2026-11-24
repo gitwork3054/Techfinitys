@@ -294,7 +294,7 @@ def operations_api(request):
                 r = LeaveRequest.objects.create(employee=member,leave_type=_choice(data.get('type','annual'),
                     {'annual','sick','casual','unpaid','other'},'leave type'),start_date=start,end_date=end,
                     reason=_str(data.get('reason'),'Reason',2000,False))
-                _notify_managers(f'Leave approval: {_person(member)}',f'{start} to {end}',include_admins=False)
+                _notify_managers(f'Leave approval: {_person(member)}',f'{start} to {end}')
                 _log(member,'Requested leave',r,detail=f'{r.get_leave_type_display()}: {start} to {end}')
                 return JsonResponse({'ok':True,'id':str(r.id)})
 
