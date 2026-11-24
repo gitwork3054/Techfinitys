@@ -37,8 +37,11 @@
    // Accept only local SPA hashes and same-origin relative paths.
    if(link.startsWith('#')){
      const route=link.slice(1).split('/')[0];
-     if((window.menus?.[window.state?.ctx?.role]||[]).includes(route))window.go?.(route);
-     else if(/^#(projects|tasks|updates|admin_activity|overview)(\/|$)/.test(link))window.location.hash=link;
+     if(['projects','tasks','updates','admin_activity','overview','leaves','approvals'].includes(route)){
+       window.go?.(route); // Existing navigation checks this account's permissions.
+       const project=link.match(/^#projects\/([0-9a-f-]{36})/i);
+       if(project && window.TFPlus?.openProject)window.TFPlus.openProject(project[1]);
+     }else document.getElementById('bellBtn')?.click();
    }else if(link.startsWith('/')&&!link.startsWith('//')){
      window.location.assign(link);
    }else if(window.state?.ctx?.role==='admin'&&/leave|approval/i.test(node?.dataset?.title||'')){
