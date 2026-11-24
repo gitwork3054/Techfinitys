@@ -17,7 +17,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .models import (
     Member, Project, ClientAssignment, ChatConversation, ChatParticipant,
-    ChatMessage, RecentProjectVisit,
+    ChatMessage, RecentProjectVisit, Notification,
 )
 from .views import _context, _client_ids_for, _log
 
@@ -187,6 +187,21 @@ def collaboration_api(request):
                 ChatConversation.objects.filter(pk=convo.pk).update(updated_at=message.created_at)
                 ChatParticipant.objects.filter(conversation=convo,member=actor).update(last_read_at=message.created_at)
                 _log(actor, 'Sent internal chat message', convo, detail='Team message sent (content is private)')
+                # WorkChat popups use the same recipient-scoped notification feed
+                # as other CRM alerts. Never notify the sender or nonparticipants.
+                recipients = Member.objects.filter(
+                    chat_participations__conversation=convo,
+                    is_active=True, user__is_active=True,
+                ).exclude(pk=actor.pk).distinct()
+                Notification.objects.bulk_create([
+                    Notification(
+                        recipient=recipient,
+                        title=f'New chat from {_person(actor)}'[:220],
+                        body=body[:160],
+                        link=f'#workchat/{convo.pk}',
+                    )
+                    for recipient in recipients
+                ])
             return JsonResponse({'ok':True, 'message':_message(message)})
         if action == 'read_chat':
             convo = _is_chat_member(actor, data.get('conversationId'))
