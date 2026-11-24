@@ -667,3 +667,44 @@ html[data-theme='dark'] .tf-employee-profile-actions .tf-employee-danger{color:#
 .tf-flow-action>button{padding:8px 11px}
 .tf-flow-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 @media(max-width:600px){.tf-flow-action>*{width:100%}.tf-flow-footer button{flex:1}}
+
+
+/* Compact, properly separated project navigation for employee workspaces. */
+main#mainContent .tf-employee-tabs{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  gap:7px!important;flex-wrap:wrap!important;
+  margin:12px 0 16px!important;padding:8px!important;
+  border:1px solid var(--glass-stroke,var(--border))!important;
+  border-radius:15px!important;
+  background:var(--glass-surface,var(--panel))!important;
+  box-shadow:0 8px 22px rgba(57,91,151,.08)!important;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+main#mainContent .tf-employee-tabs button{
+  flex:0 0 auto!important;width:auto!important;min-width:0!important;
+  padding:10px 16px!important;border:1px solid transparent!important;
+  border-radius:10px!important;background:transparent!important;
+  color:var(--text)!important;font-size:12px!important;font-weight:650!important;
+  box-shadow:none!important;white-space:nowrap!important;
+}
+main#mainContent .tf-employee-tabs button:hover{
+  background:var(--accent-soft)!important;color:var(--accent)!important;
+}
+main#mainContent .tf-employee-tabs button.active{
+  background:var(--accent)!important;color:#fff!important;
+  border-color:rgba(255,255,255,.37)!important;
+  box-shadow:0 5px 16px rgba(32,100,211,.21)!important;
+}
+main#mainContent .tf-project-hero{border-radius:16px!important;border-bottom:1px solid var(--glass-stroke,var(--border))!important;margin-bottom:0!important;}
+main#mainContent .tf-project-body{padding-top:0!important;min-height:0!important;}
+main#mainContent .tf-project-body .tf-task-toolbar{border-radius:14px!important;margin-bottom:12px!important;}
+main#mainContent .tf-project-body .tf-list-pane{border-radius:16px!important;overflow:hidden;}
+main#mainContent .tf-project-body .tf-list-pane .tf-table-scroll{min-height:190px;}
+.tf-employee-task-form{display:grid;gap:14px;}
+.tf-task-form-project{display:flex;flex-direction:column;gap:3px;padding:12px 15px;border:1px solid var(--border);border-radius:11px;background:var(--raised);}
+.tf-task-form-project strong{font-size:13px;color:var(--text);}
+.tf-task-form-project small,.tf-task-help{font-size:11px;color:var(--muted);}
+@media(max-width:760px){
+ main#mainContent .tf-employee-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:thin;}
+ main#mainContent .tf-employee-tabs button{padding:9px 12px!important;}
+}
