@@ -244,6 +244,30 @@ class BrowserPushSubscriptionTests(TestCase):
             self.assertEqual(result.status_code, 400, endpoint)
         self.assertEqual(PushSubscription.objects.count(),0)
 
+    def test_push_diagnostics_and_opt_in_test_are_account_scoped(self):
+        import json
+        from workspace.models import PushSubscription, Notification
+        self.client.force_login(self.member.user)
+        status=self.client.get('/api/push/status/')
+        self.assertEqual(status.status_code,200,status.content)
+        self.assertEqual(status.json()['subscriptions'],0)
+        no_sub=self.client.post('/api/push/test/')
+        self.assertEqual(no_sub.status_code,400,no_sub.content)
+        self.client.post('/api/push/subscription/',data=json.dumps({
+            'action':'subscribe',
+            'endpoint':'https://fcm.googleapis.com/fcm/send/push-diagnostics',
+            'keys':{'p256dh':'x'*80,'auth':'y'*22},
+        }),content_type='application/json')
+        self.assertEqual(self.client.get('/api/push/status/').json()['subscriptions'],1)
+        sent=self.client.post('/api/push/test/')
+        self.assertEqual(sent.status_code,200,sent.content)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.member,
+            title='Techfinitys desktop notification test',
+        ).exists())
+        repeated=self.client.post('/api/push/test/')
+        self.assertEqual(repeated.status_code,429,repeated.content)
+
     def test_worker_served_from_root_scope(self):
         response=self.client.get('/sw.js')
         self.assertEqual(response.status_code,200)
