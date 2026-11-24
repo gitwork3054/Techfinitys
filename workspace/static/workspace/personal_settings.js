@@ -99,11 +99,11 @@
    if(key==='desktopNotifications'){
      if(control.checked){
        const result=await window.TFNotificationSounds?.enableDesktopNotifications?.();
-       if(result==='enabled'||result==='tab-only'){
+       if(result==='enabled'){
          await set(key,true);
        }else{
          control.checked=false;
-         alert(result==='denied'?'Desktop notification permission was denied. Enable it in browser site settings.':'Desktop notifications are unavailable in this browser.');
+         alert(result==='denied'?'Desktop notification permission was denied. Enable it in browser site settings.':result==='tab-only'?'This Chrome profile allowed alerts, but background push registration failed. Try Check notification setup and re-enable.':'Desktop notifications are unavailable in this browser.');
        }
      }else{
        await window.TFNotificationSounds?.disableDesktopNotifications?.();
@@ -116,7 +116,7 @@
  document.addEventListener('click',async event=>{
    if(!event.target.closest?.('[data-tf-enable-desktop]'))return;
    const result=await window.TFNotificationSounds?.enableDesktopNotifications?.();
-   if(result==='enabled'||result==='tab-only'){
+   if(result==='enabled'){
      await set('desktopNotifications',true);
    }else{
      alert('Desktop push could not be enabled: '+String(result||'unsupported'));
