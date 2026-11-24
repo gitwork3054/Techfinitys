@@ -241,6 +241,39 @@ def _event_json(e):
     }
 
 
+
+def _run_task_workflows(task, old_status, actor):
+    """Execute bounded manager-configured rules for task status changes."""
+    if old_status == task.status:
+        return
+    for record in Record.objects.filter(space='live', kind='workflows'):
+        rule = record.data or {}
+        if rule.get('status') != 'Active' or rule.get('trigger') != 'task_status':
+            continue
+        if rule.get('client') not in ('org', task.client.code):
+            continue
+        if rule.get('toStatus') not in ('any', task.status) or rule.get('fromStatus') not in ('any', old_status):
+            continue
+        for action in rule.get('actions', [])[:4]:
+            if not isinstance(action, dict):
+                continue
+            if action.get('type') == 'notify_assignee' and task.assigned_to_id:
+                Notification.objects.create(recipient=task.assigned_to, client=task.client,
+                    title=('Workflow: ' + str(rule.get('title', 'Task updated')))[:220],
+                    body=f'{task.title} moved to {task.get_status_display()}.')
+            elif action.get('type') == 'set_priority' and action.get('priority') in dict(Task.PRIORITY):
+                Task.objects.filter(pk=task.pk).update(priority=action['priority'])
+                task.priority = action['priority']
+            elif action.get('type') == 'create_followup':
+                title = str(action.get('title') or '').strip()[:180]
+                if title:
+                    Task.objects.create(client=task.client, project=task.project, parent=task,
+                        title=title, status='todo', priority='normal', assigned_to=task.assigned_to,
+                        created_by=actor, description=f'Automatically created from task: {task.title}',
+                        client_visible=task.client_visible)
+        _log(actor, 'Executed workflow', task, task.client, str(rule.get('title', 'Workflow'))[:180])
+
+
 @require_http_methods(['GET','POST'])
 def workspace_api(request):
     try:
@@ -548,6 +581,7 @@ def workspace_api(request):
                     raise PermissionError('Cannot edit a task assigned to a different employee')
                 if data.get('status','todo') not in dict(Task.STATUS) or data.get('priority','normal') not in dict(Task.PRIORITY):
                     raise ValueError('Invalid task status or priority')
+                previous_status = t.status if task_id else None
                 previous_project_id = t.project_id
                 t.client=client; t.title=(data.get('title') or '').strip(); t.description=data.get('description',''); t.status=data.get('status','todo'); t.priority=data.get('priority','normal')
                 t.project=Project.objects.filter(pk=data.get('projectId'),client=client).first() if data.get('projectId') else None
@@ -622,6 +656,7 @@ def workspace_api(request):
                 _recalculate_project(t.project_id)
                 if previous_project_id != t.project_id: _recalculate_project(previous_project_id)
                 _log(member,'Saved task',t,client,f'{t.title} → {assignee or "Unassigned"}')
+                if previous_status is not None: _run_task_workflows(t, previous_status, member)
                 if assignee and assignee != member:
                     Notification.objects.create(recipient=assignee,client=client,title=f'Task assigned: {t.title}',body=f'{client.name} · {t.get_priority_display()} priority')
                 return JsonResponse({'ok':True})
@@ -641,6 +676,7 @@ def workspace_api(request):
                 from .projects_plus import _recalculate_project
                 _recalculate_project(t.project_id)
                 _log(member,'Changed task status',t,t.client,f'{t.title}: {old_status.replace("_"," ")} → {next_status.replace("_"," ")}')
+                _run_task_workflows(t, old_status, member)
                 return JsonResponse({'ok':True})
 
             # --- Updates / notes ----------------------------------------------------
@@ -705,6 +741,32 @@ def workspace_api(request):
             kind=data.get('kind')
             if kind not in ALL_KINDS or kind in ('clients','employees','tasks','projects','updates','notes','calendar','assignments'):
                 raise ValueError('Unknown action')
+            if kind == 'workflows':
+                if member.role not in ('admin', 'manager'):
+                    raise PermissionError('Only managers may configure automation rules')
+                if data.get('action') == 'delete_workflow':
+                    record = Record.objects.filter(id=f"live:{data.get('id')}", kind='workflows', space='live').first()
+                    if not record: raise ValueError('Workflow not found')
+                    record.delete()
+                    _log(member, 'Deleted workflow', detail='Workflow removed')
+                    return JsonResponse({'ok':True})
+                if data.get('trigger') != 'task_status' or data.get('status') not in ('Draft','Active'):
+                    raise ValueError('Invalid workflow trigger or status')
+                for field in ('fromStatus','toStatus'):
+                    if data.get(field) not in ('any', *dict(Task.STATUS)):
+                        raise ValueError('Invalid task status condition')
+                actions = data.get('actions')
+                if not isinstance(actions, list) or not 1 <= len(actions) <= 4:
+                    raise ValueError('Choose 1 to 4 workflow actions')
+                for entry in actions:
+                    if not isinstance(entry,dict) or entry.get('type') not in ('notify_assignee','set_priority','create_followup'):
+                        raise ValueError('Invalid workflow action')
+                    if entry['type'] == 'set_priority' and entry.get('priority') not in dict(Task.PRIORITY):
+                        raise ValueError('Invalid priority')
+                    if entry['type'] == 'create_followup' and not str(entry.get('title') or '').strip()[:180]:
+                        raise ValueError('Follow-up task title is required')
+                if data.get('client') not in ('org', *ClientAccount.objects.values_list('code',flat=True)):
+                    raise ValueError('Choose an existing client')
             if not allowed(member.role,kind,'write',member.permissions): raise PermissionError('Permission denied')
             rid=data.get('id') or str(uuid.uuid4()); obj=Record.objects.filter(id=f'live:{rid}',space='live').first(); old=dict(obj.data) if obj else {}
             client_code=old.get('client') or data.get('client') or (client_codes[0] if len(client_codes)==1 else 'org')
