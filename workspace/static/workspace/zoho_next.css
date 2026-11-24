@@ -856,3 +856,95 @@ html[data-theme='dark'] .main > .tf-aurora-ribbons{
  html[data-theme='light'] .main > .tf-aurora-ribbons,
  html[data-theme='dark'] .main > .tf-aurora-ribbons{animation:none!important;}
 }
+
+
+/* Aurora layout hotfix: prevent wave artwork and translucent cards from
+   visually colliding with the workspace security bar and dashboard controls. */
+html[data-theme='light'] .main,
+html[data-theme='dark'] .main{
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:stretch!important;
+ min-height:100vh!important;
+}
+html[data-theme='light'] .main>.topbar,
+html[data-theme='dark'] .main>.topbar{
+ position:sticky!important;
+ top:0!important;
+ flex:0 0 58px!important;
+ z-index:20!important;
+ isolation:isolate;
+ background:var(--topbar)!important;
+}
+html[data-theme='light'] .main>.demo-bar,
+html[data-theme='dark'] .main>.demo-bar{
+ position:relative!important;
+ flex:0 0 auto!important;
+ z-index:12!important;
+ min-height:38px!important;
+ margin:0!important;
+ background:color-mix(in srgb,var(--panel) 97%,transparent)!important;
+ border-bottom:1px solid var(--border)!important;
+ backdrop-filter:blur(20px)!important;
+ -webkit-backdrop-filter:blur(20px)!important;
+}
+html[data-theme='light'] .main>#mainContent,
+html[data-theme='dark'] .main>#mainContent{
+ position:relative!important;
+ flex:1 0 auto!important;
+ z-index:2!important;
+ padding-top:22px!important;
+ margin-top:0!important;
+ overflow:visible;
+}
+html[data-theme='light'] main#mainContent #tfAdminOverviewStrip,
+html[data-theme='dark'] main#mainContent #tfAdminOverviewStrip{
+ display:flex!important;
+ position:relative!important;
+ z-index:3!important;
+ isolation:isolate!important;
+ margin:0 0 20px!important;
+ min-height:64px!important;
+ background:color-mix(in srgb,var(--panel) 96%,transparent)!important;
+ border:1px solid var(--glass-stroke,var(--border))!important;
+ box-shadow:0 9px 23px rgba(52,79,137,.12)!important;
+ backdrop-filter:blur(24px)!important;
+ -webkit-backdrop-filter:blur(24px)!important;
+}
+html[data-theme='light'] main#mainContent #tfAdminOverviewStrip :is(strong,small),
+html[data-theme='dark'] main#mainContent #tfAdminOverviewStrip :is(strong,small){
+ opacity:1!important;
+ position:relative;
+ z-index:1;
+}
+html[data-theme='light'] main#mainContent .tf-home-task-register,
+html[data-theme='light'] main#mainContent .tf-pane,
+html[data-theme='light'] main#mainContent .tf-widget{
+ background:rgba(255,255,255,.87)!important;
+}
+html[data-theme='dark'] main#mainContent .tf-home-task-register,
+html[data-theme='dark'] main#mainContent .tf-pane,
+html[data-theme='dark'] main#mainContent .tf-widget{
+ background:rgba(20,30,65,.87)!important;
+}
+/* Decorative light travels behind content, strongest in the top and bottom
+   margins, avoiding a high-saturation field behind dashboard labels. */
+html[data-theme='light'] .main>.tf-aurora-ribbons,
+html[data-theme='dark'] .main>.tf-aurora-ribbons{
+ top:102px!important;
+ z-index:0!important;
+ opacity:.56!important;
+ -webkit-mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.65) 16%,rgba(0,0,0,.12) 35%,rgba(0,0,0,.12) 73%,rgba(0,0,0,.65) 94%,#000 100%)!important;
+ mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.65) 16%,rgba(0,0,0,.12) 35%,rgba(0,0,0,.12) 73%,rgba(0,0,0,.65) 94%,#000 100%)!important;
+}
+html[data-theme='dark'] .main>.tf-aurora-ribbons{opacity:.70!important;}
+@media(max-width:730px){
+ html[data-theme='light'] .main>.topbar,
+ html[data-theme='dark'] .main>.topbar{flex-basis:54px!important;}
+ html[data-theme='light'] .main>#mainContent,
+ html[data-theme='dark'] .main>#mainContent{padding-top:16px!important;}
+}
+@media(prefers-reduced-motion:no-preference){
+ html[data-theme='light'] .main>.tf-aurora-ribbons,
+ html[data-theme='dark'] .main>.tf-aurora-ribbons{animation:none!important;}
+}
