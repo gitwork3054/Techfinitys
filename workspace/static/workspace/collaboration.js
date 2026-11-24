@@ -196,6 +196,22 @@
     if(!ui.chats.some(c=>c.id===id))return;
     ui.currentId=id;ui.mode='thread';ui.panel=true;ui.messages=[];ui.notice='';renderPanel();loadThread(id);
   }
+  async function openNotificationChat(id){
+    if(!isStaff())return;
+    // The chat popup can arrive before the normal 30-second inbox refresh.
+    // Retrieve the recipient-scoped inbox before opening that conversation.
+    if(!ui.chats.some(c=>c.id===id)){
+      try{
+        const data=await xhr(BASE);
+        ui.chats=data.conversations||[];
+        ui.people=data.people||[];
+        ui.ready=true;
+        drawDock();
+      }catch(error){message(error.message,true);show('chats');return;}
+    }
+    if(ui.chats.some(c=>c.id===id))openThread(id);
+    else show('chats');
+  }
   async function direct(id){
     if(ui.busy)return;ui.busy=true;
     try{const r=await xhr(BASE,{action:'start_chat',kind:'direct',memberIds:[id]});
@@ -299,6 +315,6 @@
     setTimeout(()=>{if(!ui.ready && window.state?.ctx)wait()},1500);
   }
   window.TFCollab={show,switchTab,quick,close:closePanel,closeProfile,openProfile,previewPhoto,saveProfile,
-    viewProject,search,openThread,direct,composeGroup,submitGroup,send,addPeople,submitAdd,invite};
+    viewProject,search,openThread,openNotificationChat,direct,composeGroup,submitGroup,send,addPeople,submitAdd,invite};
   init();
 })();
