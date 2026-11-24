@@ -73,3 +73,7 @@ html[data-compact='yes'] main#mainContent :is(.tf-pane,.tf-widget,.tf-metric){pa
 html[data-compact='yes'] main#mainContent :is(td,th){padding-top:6px!important;padding-bottom:6px!important}
 html[data-reduce-motion='yes'] *,html[data-reduce-motion='yes'] *::before,html[data-reduce-motion='yes'] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 @media(max-width:700px){.tf-prefs-page{padding:17px}.tf-prefs-section-title,.tf-prefs-row{grid-template-columns:1fr;gap:7px}.tf-prefs-heading{flex-direction:column}.tf-prefs-tabs{gap:13px;font-size:11px}}
+
+.tf-prefs-tabs button{background:transparent!important;border:0!important;border-radius:0!important;color:var(--muted)!important;padding:5px 0!important;font-size:12px!important;font-weight:750!important;min-height:0!important;box-shadow:none!important}
+.tf-prefs-tabs button.active,.tf-prefs-tabs button:hover,.tf-prefs-tabs button:focus-visible{color:var(--accent)!important}
+.tf-prefs-section{scroll-margin-top:88px}
