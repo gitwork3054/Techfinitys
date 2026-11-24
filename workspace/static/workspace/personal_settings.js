@@ -70,7 +70,7 @@
  }
  function renderSettings(){
   const person=window.state?.ctx||{};
-  const name=String(person.name||'My profile').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;'}[s]));
+  const name=String(person.name||'My profile').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const initials=name.trim().split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
   return '<div class="tf-prefs-page"><div class="tf-prefs-heading"><div><span class="tf-prefs-kicker">PERSONAL PREFERENCES</span><h1>Settings</h1><p>Customize how Techfinitys looks and works for your account.</p></div><span class="tf-prefs-save" id="tfPrefsStatus">Automatically saved</span></div>'+
   '<div class="tf-prefs-tabs"><span class="active">User Personal</span><span>Accessibility</span><span>Notifications</span></div>'+
