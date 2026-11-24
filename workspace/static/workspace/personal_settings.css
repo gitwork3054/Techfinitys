@@ -110,3 +110,6 @@ html[data-reduce-motion='yes'] *,html[data-reduce-motion='yes'] *::before,html[d
 }
 .tf-prefs-sound-test:hover{filter:brightness(1.08)}
 .tf-prefs-sound-test:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+
+.tf-desktop-permission-help{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin:2px 0 12px;max-width:660px}
