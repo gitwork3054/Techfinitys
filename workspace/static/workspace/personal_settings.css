@@ -77,3 +77,25 @@ html[data-reduce-motion='yes'] *,html[data-reduce-motion='yes'] *::before,html[d
 .tf-prefs-tabs button{background:transparent!important;border:0!important;border-radius:0!important;color:var(--muted)!important;padding:5px 0!important;font-size:12px!important;font-weight:750!important;min-height:0!important;box-shadow:none!important}
 .tf-prefs-tabs button.active,.tf-prefs-tabs button:hover,.tf-prefs-tabs button:focus-visible{color:var(--accent)!important}
 .tf-prefs-section{scroll-margin-top:88px}
+
+
+/* Security form belongs below the personal controls, without replacing them. */
+.tf-prefs-account-security{
+  margin:18px 0 28px;
+  padding:24px 28px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:17px;
+  color:var(--text);
+}
+.tf-prefs-account-security h2{font-size:17px!important;color:var(--text);margin:0 0 8px}
+.tf-prefs-account-security>p{color:var(--muted);font-size:12px;margin-bottom:16px}
+.tf-prefs-account-security .os-settings-form{max-width:560px;display:grid;gap:12px}
+.tf-prefs-account-security .os-settings-form label{display:grid;gap:6px;color:var(--text)}
+.tf-prefs-account-security .os-settings-form input{
+  width:100%;min-height:38px;padding:8px 10px;
+  color:var(--text);background:var(--raised);
+  border:1px solid var(--border);border-radius:8px
+}
+.tf-prefs-account-security .os-settings-form button{justify-self:start}
+@media(max-width:700px){.tf-prefs-account-security{padding:18px}}
