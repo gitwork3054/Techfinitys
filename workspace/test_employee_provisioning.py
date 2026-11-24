@@ -153,3 +153,48 @@ class InitialAdminPasswordPolicyTests(TestCase):
             with self.assertRaises(CommandError):
                 call_command('ensure_admin', stdout=StringIO())
         self.assertFalse(get_user_model().objects.filter(username='three-admin').exists())
+
+
+class DemoRecordsTests(TestCase):
+    def setup_demo(self):
+        with patch.dict(os.environ, {'CRM_EMPLOYEE_INITIAL_PASSWORD': SAMPLE_SECRET}):
+            call_command('ensure_employees', stdout=StringIO())
+        call_command('ensure_demo_records', stdout=StringIO())
+
+    def test_saved_demo_data_is_visible_and_idempotent(self):
+        from workspace.models import ClientAccount, ClientAssignment, Project, Task
+        self.setup_demo()
+        self.assertEqual(ClientAccount.objects.filter(code__startswith='demo-').count(), 5)
+        self.assertEqual(Project.objects.filter(group_name='Demo projects').count(), 10)
+        self.assertEqual(Task.objects.filter(title__startswith='DEMO |').count(), 30)
+        self.assertEqual(ClientAssignment.objects.filter(
+            active=True, client__code__startswith='demo-').count(), 5)
+
+        priya = Member.objects.get(user__username='priya')
+        project = Project.objects.filter(client__code='demo-aurelia-living').first()
+        self.assertEqual(project.owner_id, priya.id)
+        task = Task.objects.filter(project=project).first()
+        task.title = 'DEMO | Updated by a user'
+        task.save(update_fields=['title'])
+        self.setup_demo()
+        self.assertEqual(ClientAccount.objects.filter(code__startswith='demo-').count(), 5)
+        self.assertEqual(Project.objects.filter(group_name='Demo projects').count(), 10)
+        self.assertEqual(Task.objects.filter(client__code__startswith='demo-').count(), 31)
+        self.assertTrue(Task.objects.filter(pk=task.pk,title='DEMO | Updated by a user').exists())
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_employees_can_view_demo_projects_after_new_login(self):
+        from workspace.models import Project, Task
+        self.setup_demo()
+        employee = Member.objects.get(user__username='yatri')
+        self.client.force_login(employee.user)
+        first = self.client.get('/api/workspace/')
+        self.assertEqual(first.status_code, 200)
+        data = first.json()
+        self.assertEqual(len([p for p in data['projects'] if p['clientName'].startswith('DEMO |')]), 2)
+        self.assertEqual(len([t for t in data['tasks'] if t['title'].startswith('DEMO |')]), 6)
+        self.client.logout()
+        self.client.force_login(employee.user)
+        again = self.client.get('/api/workspace/')
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(len([p for p in again.json()['projects'] if p['clientName'].startswith('DEMO |')]), 2)
