@@ -708,3 +708,22 @@ main#mainContent .tf-project-body .tf-list-pane .tf-table-scroll{min-height:190p
  main#mainContent .tf-employee-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:thin;}
  main#mainContent .tf-employee-tabs button{padding:9px 12px!important;}
 }
+
+
+/* Spreadsheet-style inline task creation for all employee accounts. */
+html[data-theme='light'] main#mainContent .tf-quick-task-row,
+html[data-theme='dark'] main#mainContent .tf-quick-task-row{
+ background:var(--glass-surface,var(--panel))!important;
+}
+main#mainContent .tf-quick-task-row td{vertical-align:middle!important;padding-top:10px!important;padding-bottom:10px!important}
+main#mainContent .tf-quick-task-row .tf-quick-wrap{
+ display:flex;align-items:center;gap:4px;max-width:355px;width:100%;
+ border:1px solid rgba(86,151,235,.50);border-radius:9px;
+ background:var(--raised);padding:3px 4px;box-shadow:0 0 12px rgba(72,156,255,.10);
+}
+main#mainContent .tf-quick-task-row .tf-quick-input{min-width:90px;width:100%;flex:1;border:0!important;box-shadow:none!important;background:transparent!important}
+main#mainContent .tf-quick-task-row .tf-quick-save{white-space:nowrap;background:var(--accent-soft)!important;color:var(--accent)!important;border-radius:7px;font-weight:750}
+main#mainContent .tf-quick-task-row .tf-quick-hint{color:var(--muted);font-size:11px}
+main#mainContent .tf-inline-project-label{display:inline-flex;align-items:center;gap:7px;margin-left:14px;color:var(--muted);font-size:11px;font-weight:650}
+main#mainContent .tf-inline-project{width:min(290px,30vw);max-width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--raised);color:var(--text)}
+@media(max-width:850px){main#mainContent .tf-inline-project-label{margin:7px 0 0;display:flex}main#mainContent .tf-inline-project{width:230px}}
