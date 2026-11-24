@@ -5,6 +5,36 @@
  let accountId=null,initialized=false,polling=false;
  let lastIds=new Set(),active=new Set();
  const autoClose=new Map();
+ // Native desktop notifications are visible while another browser tab is active.
+ // Request permission only following a user's explicit click in Settings.
+ let pageFocused=document.hasFocus();
+ window.addEventListener('focus',()=>{pageFocused=true});
+ window.addEventListener('blur',()=>{pageFocused=false});
+ function showDesktopNotification(n){
+   if(!('Notification' in window)||Notification.permission!=='granted')return;
+   if(window.state?.ctx?.preferences?.desktopNotifications===false)return;
+   if(document.visibilityState==='visible'&&pageFocused)return;
+   try{
+     const notice=new Notification(n.title||'Techfinitys CRM',{
+       body:n.body||'You have a new update.',
+       tag:'techfinitys-'+String(n.id),
+       icon:'/static/images/techfinitys-logo.png',
+       silent:true
+     });
+     notice.onclick=()=>{
+       window.focus();notice.close();openItem(String(n.id));
+     };
+   }catch(_){/* Browser-level notification support varies by platform. */}
+ }
+ async function requestDesktopNotifications(){
+   if(!('Notification' in window))return 'unsupported';
+   try{
+     const answer=await Notification.requestPermission();
+     if(answer==='granted')await check();
+     return answer;
+   }catch(_){return 'denied'}
+ }
+
  // Web Audio has no external file dependency. Browsers require a user gesture
  // before playing sound; enable the context on first interaction.
  let audioContext=null,lastChimeAt=0;
@@ -110,10 +140,11 @@
    el.querySelector('.tf-alert-open').addEventListener('click',()=>openItem(id));
    box.appendChild(el);active.add(id);
    playChime();
+   showDesktopNotification(n);
    autoClose.set(id,setTimeout(()=>dismiss(id),9000));
  }
  async function check(){
-   if(polling||document.visibilityState!=='visible'||!window.state?.ctx)return;
+   if(polling||!window.state?.ctx)return;
    const id=String(window.state.ctx.id);
    if(accountId!==id){
      accountId=id;initialized=false;lastIds=new Set();
@@ -167,7 +198,7 @@
    window.addEventListener('focus',check);
  }
  // Settings uses this to play a sample chime immediately after the user clicks.
- window.TFNotificationSounds={test:()=>{unlockAudio();audioContext?.resume?.().then(()=>playChime(true)).catch(()=>{});}};
+ window.TFNotificationSounds={test:()=>{unlockAudio();audioContext?.resume?.().then(()=>playChime(true)).catch(()=>{});},requestDesktopNotifications,notificationPermission:()=>('Notification' in window?Notification.permission:'unsupported')};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin);
  else begin();
 })();
