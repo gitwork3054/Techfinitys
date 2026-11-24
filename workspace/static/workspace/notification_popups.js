@@ -88,23 +88,32 @@
      if(!Array.isArray(data.notifications))return;
      const rows=data.notifications;
      const incoming=rows.filter(n=>!n.read&&!lastIds.has(String(n.id)));
-     if(initialized && window.state?.ctx?.preferences?.feedNotifications!==false){
-       incoming.reverse().slice(-3).forEach(show);
-     }
-     if(!initialized){
-       initialized=true;
-       // On login, surface only freshly generated alerts instead of flooding
-       // the screen with an entire unread history.
-       if(window.state?.ctx?.preferences?.feedNotifications!==false){
-         rows.filter(n=>!n.read&&Date.now()-Date.parse(n.createdAt)<60000)
-           .slice(0,1).forEach(show);
+     const prefs=window.state?.ctx?.preferences||{};
+     if(prefs.feedNotifications!==false){
+       if(initialized){
+         incoming.slice(0,3).reverse().forEach(show);
+       }else{
+         // Restore recent unread inbox alerts when an employee signs back in;
+         // keep the remainder in the bell to avoid flooding the screen.
+         rows.filter(n=>!n.read &&
+           Number.isFinite(Date.parse(n.createdAt)) &&
+           Date.now()-Date.parse(n.createdAt)<7*86400000)
+           .slice(0,2).reverse().forEach(show);
        }
      }
+     initialized=true;
      lastIds=new Set(rows.map(n=>String(n.id)));
      if(window.state){
        const byId=new Map((window.state.notifications||[]).map(n=>[String(n.id),n]));
        rows.forEach(n=>byId.set(String(n.id),n));
        window.state.notifications=[...byId.values()].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,100);
+       const bell=document.getElementById('bellBtn');
+       if(bell && window.state?.ctx?.role!=='admin'){
+         const count=rows.filter(n=>!n.read).length;
+         bell.title='Notifications ('+count+' unread)';
+         bell.setAttribute('aria-label',bell.title);
+         bell.innerHTML='♧'+(count?'<span class="notification-dot">'+(count>99?'99+':count)+'</span>':'');
+       }
      }
    }catch(_){/* Network blips must not interfere with other CRM controls. */}
    finally{polling=false;}
