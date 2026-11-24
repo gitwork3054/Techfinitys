@@ -69,7 +69,12 @@
      }
    }catch(_){/* Navigation remains available if read acknowledgement fails. */}
    // Accept only local SPA hashes and same-origin relative paths.
-   if(link.startsWith('#')){
+   if(link.startsWith('#workchat/')){
+     const chatId=link.slice('#workchat/'.length);
+     if(/^[0-9a-f-]{36}$/i.test(chatId)&&window.TFCollab?.openThread){
+       window.TFCollab.openThread(chatId);
+     }else if(window.TFCollab?.show)window.TFCollab.show('chats');
+   }else if(link.startsWith('#')){
      const route=link.slice(1).split('/')[0];
      if(['projects','tasks','updates','admin_activity','overview','leaves','approvals'].includes(route)){
        window.go?.(route); // Existing navigation checks this account's permissions.
