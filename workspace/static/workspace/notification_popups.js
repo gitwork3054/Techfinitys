@@ -5,6 +5,40 @@
  let accountId=null,initialized=false,polling=false;
  let lastIds=new Set(),active=new Set();
  const autoClose=new Map();
+ // Web Audio has no external file dependency. Browsers require a user gesture
+ // before playing sound; enable the context on first interaction.
+ let audioContext=null,lastChimeAt=0;
+ function unlockAudio(){
+   try{
+     const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+     if(!AudioContextClass)return;
+     if(!audioContext)audioContext=new AudioContextClass();
+     if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+   }catch(_){/* Audio is optional and never blocks notifications. */}
+ }
+ function playChime(force=false){
+   if(!force && window.state?.ctx?.preferences?.soundNotifications===false)return;
+   if(!force && window.state?.ctx?.preferences?.feedNotifications===false)return;
+   const now=Date.now();
+   if(!force && now-lastChimeAt<1800)return; // one chime for a burst of popups
+   if(!audioContext||audioContext.state!=='running')return;
+   lastChimeAt=now;
+   try{
+     const start=audioContext.currentTime+0.02;
+     [[660,0,.14],[880,.16,.21]].forEach(([frequency,offset,duration])=>{
+       const oscillator=audioContext.createOscillator();
+       const envelope=audioContext.createGain();
+       oscillator.type='sine';
+       oscillator.frequency.value=frequency;
+       envelope.gain.setValueAtTime(0.0001,start+offset);
+       envelope.gain.exponentialRampToValueAtTime(0.055,start+offset+0.025);
+       envelope.gain.exponentialRampToValueAtTime(0.0001,start+offset+duration);
+       oscillator.connect(envelope);envelope.connect(audioContext.destination);
+       oscillator.start(start+offset);oscillator.stop(start+offset+duration+0.01);
+     });
+   }catch(_){/* Keep the visual notification if audio fails. */}
+ }
+
  function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));}
  function container(){
    let el=document.getElementById(containerId);
@@ -70,6 +104,7 @@
    el.querySelector('.tf-alert-close').addEventListener('click',()=>dismiss(id));
    el.querySelector('.tf-alert-open').addEventListener('click',()=>openItem(id));
    box.appendChild(el);active.add(id);
+   playChime();
    autoClose.set(id,setTimeout(()=>dismiss(id),9000));
  }
  async function check(){
@@ -119,11 +154,15 @@
    finally{polling=false;}
  }
  function begin(){
+   document.addEventListener('pointerdown',unlockAudio,{once:true,capture:true});
+   document.addEventListener('keydown',unlockAudio,{once:true,capture:true});
    if(window.state?.ctx)check();
    setInterval(check,20000);
    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
    window.addEventListener('focus',check);
  }
+ // Settings uses this to play a sample chime immediately after the user clicks.
+ window.TFNotificationSounds={test:()=>{unlockAudio();audioContext?.resume?.().then(()=>playChime(true)).catch(()=>{});}};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin);
  else begin();
 })();
