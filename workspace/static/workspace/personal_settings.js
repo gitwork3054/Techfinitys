@@ -81,7 +81,7 @@
   '<div class="tf-prefs-row"><strong>Font size</strong><div class="tf-prefs-options">'+choice('fontSize','small','Small','<b class="tf-font-sample" style="font-size:13px">Aa</b>')+choice('fontSize','normal','Default','<b class="tf-font-sample" style="font-size:16px">Aa</b>')+choice('fontSize','large','Large','<b class="tf-font-sample" style="font-size:20px">Aa</b>')+choice('fontSize','extra','Extra large','<b class="tf-font-sample" style="font-size:24px">Aa</b>')+'</div></div></section>'+
   '<section class="tf-prefs-section"><div class="tf-prefs-row"><strong>Landing page</strong><div class="tf-prefs-options">'+landing.map(([key,value])=>choice('landingPage',key,'<span class="tf-landing-symbol">'+({overview:'▦',projects:'◇',tasks:'☑',updates:'↻'}[key])+'</span>'+value)).join('')+'</div></div></section>'+
   '<section id="tfPersonalAccess" class="tf-prefs-section"><h2>Accessibility</h2>'+switcher('highContrast','High contrast','Boost text and border visibility')+switcher('reduceMotion','Reduce motion','Turn off decorative background animations')+switcher('compactMode','Compact spacing','Display more information on each screen')+'</section>'+
-  '<section class="tf-prefs-section"><h2>Notification preferences</h2><p>These are personal notification preferences; delivery channels require their corresponding service configuration.</p>'+switcher('feedNotifications','Feed notifications','Show notification popups')+switcher('soundNotifications','Notification sound','Play a gentle chime when a popup appears')+switcher('desktopNotifications','Desktop notifications','Show messages on the desktop even when the CRM tab is closed')+'<button type="button" class="tf-prefs-sound-test" data-tf-enable-desktop>Enable desktop alerts</button><span class="tf-desktop-permission-help">Allow notifications in your browser when prompted. Your browser and operating system determine where alerts appear.</span>'+'<button type="button" class="tf-prefs-sound-test" onclick="TFNotificationSounds.test()">♫ Test notification sound</button>'+switcher('emailNotifications','Personal email','Preference for email updates')+switcher('activityReminders','Activity reminders','Preference for upcoming activity reminders')+'</section>'+
+  '<section class="tf-prefs-section"><h2>Notification preferences</h2><p>These are personal notification preferences; delivery channels require their corresponding service configuration.</p>'+switcher('feedNotifications','Feed notifications','Show notification popups')+switcher('soundNotifications','Notification sound','Play a gentle chime when a popup appears')+switcher('desktopNotifications','Desktop notifications','Show messages on the desktop even when the CRM tab is closed')+'<button type="button" class="tf-prefs-sound-test" data-tf-enable-desktop>Enable desktop alerts for this Chrome profile</button><button type="button" class="tf-prefs-sound-test" data-tf-test-desktop>Send test desktop alert</button><button type="button" class="tf-prefs-sound-test" data-tf-status-desktop>Check notification setup</button><p class="tf-desktop-permission-help" id="tfPushStatus">Each Chrome profile and device must enable desktop alerts separately. Keep Chrome running and allow notifications in Windows settings.</p>'+'<button type="button" class="tf-prefs-sound-test" onclick="TFNotificationSounds.test()">♫ Test notification sound</button>'+switcher('emailNotifications','Personal email','Preference for email updates')+switcher('activityReminders','Activity reminders','Preference for upcoming activity reminders')+'</section>'+
   '</div>';
  }
  // Delegated controls keep working after the SPA re-renders Settings.
@@ -121,6 +121,27 @@
    }else{
      alert('Desktop push could not be enabled: '+String(result||'unsupported'));
    }
+ });
+ document.addEventListener('click',async event=>{
+   const test=event.target.closest?.('[data-tf-test-desktop]');
+   const status=event.target.closest?.('[data-tf-status-desktop]');
+   if(!test&&!status)return;
+   const el=document.getElementById('tfPushStatus');
+   if(el)el.textContent='Checking desktop notification setup…';
+   try{
+     const permission=window.TFNotificationSounds?.notificationPermission?.()||'unsupported';
+     const response=await fetch(status?'/api/push/status/':'/api/push/test/',{
+       method:status?'GET':'POST',credentials:'same-origin',
+       headers:{'X-CSRFToken':decodeURIComponent(document.cookie.split('; ').find(x=>x.startsWith('csrftoken='))?.split('=').slice(1).join('=')||'')}
+     });
+     const result=await response.json();
+     if(!response.ok)throw Error(result.error||'Could not check desktop notifications');
+     if(el)el.textContent=status?
+       ('Chrome permission: '+permission+' · Server configured: '+(result.serverEnabled?'Yes':'No')+
+        ' · Registered browsers for this account: '+result.subscriptions+
+        '. Enable separately in each Chrome profile.'):
+       (result.message+' Switch to another tab or screen to check it.');
+   }catch(error){if(el)el.textContent=error.message;}
  });
  window.TFPreferences={receive,set,renderSettings};
  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(prefs.mode==='auto')apply()});
