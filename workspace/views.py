@@ -569,6 +569,36 @@ def workspace_api(request):
                 _notify_client_team(client,f'Project updated: {p.title}',f'{p.get_status_display()} · {p.progress}% complete',exclude=member)
                 return JsonResponse({'ok':True})
 
+            # --- Employee self-service task creation (restricted to assigned clients) ---
+            if action == 'self_create_task':
+                if member.role != 'employee':
+                    raise PermissionError('Employee task creation only')
+                project = Project.objects.select_related('client').filter(pk=data.get('projectId')).first()
+                if not project or not ClientAssignment.objects.filter(
+                    employee=member, client=project.client, active=True
+                ).exists():
+                    raise PermissionError('You are not assigned to this project client')
+                title = str(data.get('title') or '').strip()
+                if not 1 <= len(title) <= 220:
+                    raise ValueError('Task name must contain 1 to 220 characters')
+                description = str(data.get('description') or '').strip()
+                if len(description) > 4000:
+                    raise ValueError('Description is too long')
+                priority = data.get('priority', 'normal')
+                if priority not in dict(Task.PRIORITY):
+                    raise ValueError('Invalid priority')
+                due_at = parse_datetime(data['dueAt']) if data.get('dueAt') else None
+                if data.get('dueAt') and not due_at:
+                    raise ValueError('Invalid due date')
+                t = Task.objects.create(
+                    client=project.client, project=project, created_by=member,
+                    assigned_to=member, title=title, description=description,
+                    priority=priority, status='todo', due_at=due_at,
+                    client_visible=False,
+                )
+                _log(member, 'Created own project task', t, project.client, title)
+                return JsonResponse({'ok': True, 'id': str(t.pk)}, status=201)
+
             # --- Tasks --------------------------------------------------------------
             if action == 'save_task':
                 client = ClientAccount.objects.get(pk=data.get('clientId'))
