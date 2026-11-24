@@ -33,3 +33,36 @@ class NotificationPopupTests(TestCase):
         self.assertNotEqual(result.status_code, 200)
         self.n2.refresh_from_db()
         self.assertIsNone(self.n2.read_at)
+
+    def test_employee_self_created_task_generates_inbox_notification(self):
+        import json
+        from workspace.models import ClientAccount, ClientAssignment, Project
+        client = ClientAccount.objects.create(name='Test client', code='popup-test')
+        project = Project.objects.create(client=client, title='Test delivery')
+        ClientAssignment.objects.create(client=client, employee=self.one, active=True)
+        self.client.force_login(self.one.user)
+        response = self.client.post('/api/workspace/',
+            data=json.dumps({'action':'self_create_task','projectId':str(project.pk),'title':'Prepare creative draft'}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        feed = self.client.get('/api/workspace/?notifications_only=1')
+        self.assertEqual(feed.status_code, 200)
+        self.assertTrue(any('Prepare creative draft' in n['title'] for n in feed.json()['notifications']))
+        self.assertTrue(all('Private leave update' not in n['title'] for n in feed.json()['notifications']))
+
+    def test_manager_quick_task_notifies_assigned_employee_only(self):
+        import json
+        from workspace.models import ClientAccount, ClientAssignment, Project
+        client = ClientAccount.objects.create(name='Test client', code='popup-test')
+        project = Project.objects.create(client=client, title='Test delivery')
+        ClientAssignment.objects.create(client=client, employee=self.one, active=True)
+        supervisor = Member.objects.create(
+            user=get_user_model().objects.create_user('popup_manager', password='test-pass-1234'),
+            role='manager')
+        self.client.force_login(supervisor.user)
+        response = self.client.post('/api/projects-plus/',
+            data=json.dumps({'action':'quick_create_task','projectId':str(project.pk),'title':'Review social post'}),
+            content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertTrue(Notification.objects.filter(recipient=self.one,title__icontains='Review social post').exists())
+        self.assertFalse(Notification.objects.filter(recipient=self.two,title__icontains='Review social post').exists())
