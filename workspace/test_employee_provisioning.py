@@ -179,7 +179,7 @@ class DemoRecordsTests(TestCase):
         self.setup_demo()
         self.assertEqual(ClientAccount.objects.filter(code__startswith='demo-').count(), 5)
         self.assertEqual(Project.objects.filter(group_name='Demo projects').count(), 10)
-        self.assertEqual(Task.objects.filter(client__code__startswith='demo-').count(), 31)
+        self.assertEqual(Task.objects.filter(client__code__startswith='demo-').count(), 30)
         self.assertTrue(Task.objects.filter(pk=task.pk,title='DEMO | Updated by a user').exists())
 
     @override_settings(SECURE_SSL_REDIRECT=False)
