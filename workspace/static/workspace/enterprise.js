@@ -30,7 +30,7 @@
   });
   menus.client = ['overview','projects','milestones','tasks','updates','approvals','tickets','calendar','content','deliverables','files','invoices','notes','settings'];
   // Employee navigation: keep only daily work; management is reserved for managers and admins.
-  menus.employee = ['overview','tasks','projects','attendance','timesheets','leaves','calendar','updates','files'];
+  menus.employee = ['overview','tasks','projects','attendance','timesheets','leaves','calendar','updates','files','settings'];
   menus.manager = ['overview','leads','clients','team','assignments','projects','milestones','tasks','attendance','timesheets','leaves','approvals','tickets','updates','calendar','deliverables','content','campaigns','shoots','files','invoices','reports','audit','workflows','settings'];
   menus.admin = [...menus.manager];
   const coreShell = shell;
@@ -225,8 +225,19 @@
   const oldClientModal=clientModal;
   clientModal=function(){oldClientModal();const p=document.querySelector('[name="portalPassword"]');if(p){p.minLength=4;p.placeholder='4+ character password'} };
 
-  function settingsEnhanced(){return `${osHeading('Workspace settings','Account security, permissions and connected operations.')}
-    <div class="os-columns"><section class="os-pane">${paneTitle('Security and access')}<h3>Change your password</h3><p>Use a unique password with at least 4 characters.</p><form id="osPasswordForm" class="os-settings-form"><label>Current password<input type="password" name="oldPassword" required></label><label>New password<input type="password" name="newPassword" minlength="4" required></label><button class="primary" type="submit">Update password</button></form></section><section class="os-pane">${paneTitle('Permission model')}<div class="os-settings-block"><span>1</span><div><strong>Identity and role</strong><p>Admin, manager, employee and client accounts each have their own workspace.</p></div></div><div class="os-settings-block"><span>2</span><div><strong>Client assignments</strong><p>Employees may only work inside explicitly assigned client workspaces.</p></div></div><div class="os-settings-block"><span>3</span><div><strong>Approval separation</strong><p>Clients sign off on client deliverables; managers approve HR and time entries.</p></div></div></section></div>`}
+  function settingsEnhanced(){
+    // The Enterprise router owns the real Settings route. Render personal
+    // preferences here rather than the old workspace-only placeholder.
+    const personal=window.TFPreferences?.renderSettings?.()||'<section class="os-pane"><h2>Personal preferences</h2><p>Unable to load settings. Refresh the page.</p></section>';
+    const security=`<section class="tf-prefs-account-security">
+      <h2>Account security</h2><p>Change your password for this account. Minimum 4 characters.</p>
+      <form id="osPasswordForm" class="os-settings-form">
+        <label>Current password<input type="password" name="oldPassword" autocomplete="current-password" required></label>
+        <label>New password<input type="password" name="newPassword" autocomplete="new-password" minlength="4" required></label>
+        <button class="primary" type="submit">Update password</button>
+      </form></section>`;
+    return personal+security;
+  }
   const coreRender=render;
   render=function(){
     if(state.loading||state.error||!state.ctx){coreRender();return}
