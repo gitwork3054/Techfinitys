@@ -8,12 +8,83 @@
  // Native desktop notifications are visible while another browser tab is active.
  // Request permission only following a user's explicit click in Settings.
  let pageFocused=document.hasFocus();
+ let pushRegistered=false;
+ function toBytes(base64url){
+   const padded=base64url.replace(/-/g,'+').replace(/_/g,'/');
+   const raw=atob(padded.padEnd(Math.ceil(padded.length/4)*4,'='));
+   return Uint8Array.from(raw,c=>c.charCodeAt(0));
+ }
+ function csrfToken(){
+   const token=document.cookie.split('; ').find(x=>x.startsWith('csrftoken='));
+   return decodeURIComponent(token?.split('=').slice(1).join('=')||'');
+ }
+ async function postPush(action,subscription){
+   return fetch('/api/push/subscription/',{
+     method:'POST',credentials:'same-origin',
+     headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken()},
+     body:JSON.stringify({action,endpoint:subscription.endpoint,keys:subscription.toJSON()?.keys})
+   }).then(async response=>{
+     const result=await response.json();
+     if(!response.ok)throw Error(result.error||'Could not register notifications');
+     return result;
+   });
+ }
+ async function registerPush(){
+   if(!('serviceWorker' in navigator)||!('PushManager' in window))return 'unsupported';
+   if(Notification.permission!=='granted')return 'not-granted';
+   const config=await fetch('/api/push/config/',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json());
+   if(!config.available||!config.publicKey)return 'unavailable';
+   const registration=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+   const ready=await navigator.serviceWorker.ready;
+   let subscription=await ready.pushManager.getSubscription();
+   if(!subscription)subscription=await ready.pushManager.subscribe({
+     userVisibleOnly:true,applicationServerKey:toBytes(config.publicKey)
+   });
+   await postPush('subscribe',subscription);
+   pushRegistered=true;
+   return 'enabled';
+ }
+ async function enableDesktopNotifications(){
+   if(!('Notification' in window))return 'unsupported';
+   if(Notification.permission!=='granted'){
+     const result=await Notification.requestPermission();
+     if(result!=='granted')return result;
+   }
+   try{return await registerPush()}catch(error){
+     console.warn('Background push registration unavailable:',error);
+     return 'tab-only';
+   }
+ }
+ async function disableDesktopNotifications(){
+   if(!('serviceWorker' in navigator))return;
+   try{
+     const registration=await navigator.serviceWorker.getRegistration('/');
+     const subscription=await registration?.pushManager?.getSubscription();
+     if(subscription){
+       await postPush('unsubscribe',subscription);
+       await subscription.unsubscribe();
+     }
+   }catch(error){console.warn('Push unsubscription failed:',error)}
+   pushRegistered=false;
+ }
+ async function syncPushSubscription(){
+   if(window.state?.ctx?.preferences?.desktopNotifications===false)return;
+   if(!('Notification' in window)||Notification.permission!=='granted')return;
+   if(!('serviceWorker' in navigator))return;
+   try{
+     const registration=await navigator.serviceWorker.getRegistration('/');
+     const subscription=await registration?.pushManager?.getSubscription();
+     if(subscription){await postPush('subscribe',subscription);pushRegistered=true;}
+   }catch(_){/* Retry on next login or explicit user action. */}
+ }
+
  window.addEventListener('focus',()=>{pageFocused=true});
  window.addEventListener('blur',()=>{pageFocused=false});
  function showDesktopNotification(n){
    if(!('Notification' in window)||Notification.permission!=='granted')return;
    if(window.state?.ctx?.preferences?.desktopNotifications===false)return;
    if(document.visibilityState==='visible'&&pageFocused)return;
+   if(pushRegistered)return; // Service worker owns background desktop notifications.
    try{
      const notice=new Notification(n.title||'Techfinitys CRM',{
        body:n.body||'You have a new update.',
@@ -27,12 +98,7 @@
    }catch(_){/* Browser-level notification support varies by platform. */}
  }
  async function requestDesktopNotifications(){
-   if(!('Notification' in window))return 'unsupported';
-   try{
-     const answer=await Notification.requestPermission();
-     if(answer==='granted')await check();
-     return answer;
-   }catch(_){return 'denied'}
+   try{return await enableDesktopNotifications()}catch(_){return 'denied'}
  }
 
  // Web Audio has no external file dependency. Browsers require a user gesture
@@ -192,13 +258,30 @@
  function begin(){
    document.addEventListener('pointerdown',unlockAudio,{once:true,capture:true});
    document.addEventListener('keydown',unlockAudio,{once:true,capture:true});
-   if(window.state?.ctx)check();
+   if(window.state?.ctx){check();syncPushSubscription()}
    setInterval(check,20000);
+   setInterval(()=>{if(window.state?.ctx&&!pushRegistered)syncPushSubscription()},60000);
+   navigator.serviceWorker?.addEventListener?.('message',event=>{
+     if(event.data?.type!=='tf-push-open')return;
+     const link=event.data.link||'';
+     if(link.startsWith('#workchat/')){
+       const id=link.slice('#workchat/'.length);
+       if(/^[0-9a-f-]{36}$/i.test(id))window.TFCollab?.openNotificationChat?.(id);
+     }else if(link.startsWith('#'))window.go?.(link.slice(1).split('/')[0]);
+   });
+   const pendingChat=new URLSearchParams(location.search).get('openChat');
+   if(pendingChat&&/^[0-9a-f-]{36}$/i.test(pendingChat)){
+     const tryOpen=()=>{if(window.TFCollab?.openNotificationChat&&window.state?.ctx){
+       window.TFCollab.openNotificationChat(pendingChat);
+       history.replaceState(null,'',location.pathname+location.hash);
+     }else setTimeout(tryOpen,600)};
+     setTimeout(tryOpen,650);
+   }
    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
    window.addEventListener('focus',check);
  }
  // Settings uses this to play a sample chime immediately after the user clicks.
- window.TFNotificationSounds={test:()=>{unlockAudio();audioContext?.resume?.().then(()=>playChime(true)).catch(()=>{});},requestDesktopNotifications,notificationPermission:()=>('Notification' in window?Notification.permission:'unsupported')};
+ window.TFNotificationSounds={test:()=>{unlockAudio();audioContext?.resume?.().then(()=>playChime(true)).catch(()=>{});},requestDesktopNotifications,enableDesktopNotifications,disableDesktopNotifications,syncPushSubscription,notificationPermission:()=>('Notification' in window?Notification.permission:'unsupported')};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin);
  else begin();
 })();
