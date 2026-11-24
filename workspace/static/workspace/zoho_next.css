@@ -1059,3 +1059,80 @@ html[data-theme] .main > .tf-aurora-ribbons{
   html[data-theme] .main > .topbar{height:54px!important;min-height:54px!important}
   html[data-theme] .main > main#mainContent{padding-top:16px!important}
 }
+
+
+/* Dark-mode accessibility pass: restore legible navigation and data labels.
+   Colour-only overrides; preserves sizing, positioning, and visual effects. */
+html[data-theme='dark']{
+  --muted:#bbcae3;
+}
+html[data-theme='dark'] .sidebar .nav-label,
+html[data-theme='dark'] .sidebar nav .os-nav-group>span,
+html[data-theme='dark'] .sidebar .tf-recent-head,
+html[data-theme='dark'] .sidebar .tf-recent-head>span{
+  color:#c1d1ef!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar nav button:not(.active){
+  color:#d8e5fb!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar nav button:not(.active) .nav-icon,
+html[data-theme='dark'] .sidebar nav button:not(.active)>span:first-child{
+  color:#afc9ef!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar nav button:not(.active):hover,
+html[data-theme='dark'] .sidebar nav button:not(.active):focus-visible{
+  background:rgba(83,147,245,.20)!important;
+  color:#fff!important;
+  border-color:rgba(149,192,255,.30)!important;
+}
+html[data-theme='dark'] .sidebar nav button.active,
+html[data-theme='dark'] .sidebar nav button.active *{
+  color:#fff!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar .workspace strong,
+html[data-theme='dark'] .sidebar .workspace small{
+  color:#f3f7ff!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar .tf-recent-item,
+html[data-theme='dark'] .sidebar .tf-recent button{
+  color:#d6e4fa!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar .tf-recent-item .tf-folder-icon{
+  color:#a9caff!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] .sidebar .tf-recent-item:hover,
+html[data-theme='dark'] .sidebar .tf-recent-item:focus-visible{
+  color:#fff!important;
+  background:rgba(89,155,245,.20)!important;
+}
+html[data-theme='dark'] .sidebar .tf-chat-dock :is(button,span),
+html[data-theme='dark'] .sidebar .sidebar-bottom,
+html[data-theme='dark'] .sidebar .sidebar-bottom small{
+  color:#c6d8f2!important;
+  opacity:1!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-header p,.tf-dashboard-header p,.tf-widget small,.tf-home-tasks-head p,.tf-pane-sub){
+  color:#c6d3e9!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-task-table td,.tf-home-task-row,.tf-compact-row,.tf-widget){
+  color:#e6eeff!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-grid thead th,.tf-task-table thead th,.tf-home-tasks-thead){
+  background:#243655!important;
+  color:#e0eaff!important;
+  border-color:rgba(166,194,242,.23)!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-home-task-row small,.tf-task-name small,.tf-widget p,.tf-compact-row small){
+  color:#bccbe5!important;
+}
+html[data-theme='dark'] main#mainContent :is(input,textarea,select)::placeholder{
+  color:#b1c1dd!important;
+  opacity:1;
+}
