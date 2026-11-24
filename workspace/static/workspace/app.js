@@ -4,9 +4,9 @@ const cookie=n=>document.cookie.split('; ').find(x=>x.startsWith(n+'='))?.split(
 const api='/api/workspace/';
 const labels={overview:'Overview',clients:'Clients',team:'Team & hierarchy',assignments:'Client assignments',projects:'Projects',tasks:'Tasks',updates:'Updates',calendar:'Calendar',notes:'Notes',packages:'Packages',deliverables:'Deliverables',content:'Content',campaigns:'Analytics',shoots:'Shoots',files:'Files & assets',tickets:'Support desk',invoices:'Billing',workflows:'Workflows',reports:'Reports',audit:'Activity log',settings:'Settings'};
 const menus={
- client:['overview','updates','projects','tasks','calendar','notes','packages','deliverables','content','campaigns','shoots','files','tickets','invoices'],
- employee:['overview','clients','projects','tasks','updates','calendar','notes','deliverables','content','campaigns','shoots','files','tickets'],
- manager:['overview','clients','team','assignments','projects','tasks','updates','calendar','notes','packages','deliverables','content','campaigns','shoots','files','tickets','invoices','workflows','reports','audit'],
+ client:['overview','updates','projects','tasks','calendar','notes','packages','deliverables','content','campaigns','shoots','files','tickets','invoices','settings'],
+ employee:['overview','clients','projects','tasks','updates','calendar','notes','deliverables','content','campaigns','shoots','files','tickets','settings'],
+ manager:['overview','clients','team','assignments','projects','tasks','updates','calendar','notes','packages','deliverables','content','campaigns','shoots','files','tickets','invoices','workflows','reports','audit','settings'],
  admin:['overview','clients','team','assignments','projects','tasks','updates','calendar','notes','packages','deliverables','content','campaigns','shoots','files','tickets','invoices','workflows','reports','audit','settings']
 };
 function roleName(){return state.ctx?.roleLabel||''}
@@ -29,6 +29,7 @@ async function load(){
     Object.assign(state,d,ops,plus);
     state.ctx=d.ctx||d.context||state.ctx;
     if(!state.ctx)throw Error('CRM account context is missing');
+    if(window.TFPreferences)window.TFPreferences.receive(state.ctx.preferences||{},state.ctx.id);
     state.error='';
     if(!(menus[state.ctx.role]||[]).includes(state.tab))state.tab='overview';
   }catch(e){state.error=e.message}
@@ -182,7 +183,7 @@ async function workflowDelete(id){
 
 function audit(){return `${heading('Immutable-style operational trail of key hierarchy and workflow changes.')}<div class="panel">${state.activities.map(a=>`<div class="activity"><span class="avatar tiny">${initials(a.actorName)}</span><div><strong>${esc(a.action)}</strong><p>${esc(a.detail)}</p><small>${esc(a.actorName)} · ${esc(a.clientName)} · ${fmtDate(a.createdAt)}</small></div></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`}
 function reports(){let byClient=state.clients.map(c=>{let ts=state.tasks.filter(t=>t.clientId===c.id),done=ts.filter(t=>t.status==='completed').length;return `<tr><td>${esc(c.name)}</td><td>${ts.length}</td><td>${done}</td><td>${ts.length?Math.round(done/ts.length*100):0}%</td><td>${state.updates.filter(u=>u.clientId===c.id).length}</td></tr>`}).join('');return `${heading('Simple operational reporting across clients, tasks and communication.')}<div class="panel"><table><thead><tr><th>Client</th><th>Tasks</th><th>Completed</th><th>Completion</th><th>Updates</th></tr></thead><tbody>${byClient}</tbody></table></div>`}
-function settings(){return `${heading('Organisation controls are managed by the Super Admin.')}<div class="cards"><article class="record-card"><span class="eyebrow">Security</span><h3>Role hierarchy</h3><p>Super Admin → Office Manager → Employee → assigned client workspaces. Clients are isolated to their own portal.</p></article><article class="record-card"><span class="eyebrow">Permissions</span><h3>Feature access</h3><p>Role hierarchy controls data visibility; permission grants control actions.</p></article><article class="record-card"><span class="eyebrow">Audit</span><h3>Activity history</h3><p>Client assignment, user creation, task changes and updates are recorded.</p></article></div>`}
+function settings(){return window.TFPreferences?.renderSettings?.() || `${heading('Personal settings')}<div class="panel">Loading preferences…</div>`}
 function render(){if(state.loading){$('#mainContent').innerHTML='<div class="empty">Loading CRM…</div>';return}if(state.error){$('#mainContent').innerHTML=`<div class="empty"><h2>${esc(state.error)}</h2><a href="/login/">Sign in again</a></div>`;return}shell();let fn={overview,clients,team,assignments,projects,tasks,updates,calendar,notes,reports,audit,settings}[state.tab];$('#mainContent').innerHTML=(state.notice?`<div class="notice">${esc(state.notice)}<button onclick="state.notice='';render()">×</button></div>`:'')+(fn?fn():legacy(state.tab))}
 function openModal(html){$('#modalRoot').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><section class="modal"><button class="close icon" onclick="closeModal()">×</button>${html}</section></div>`}
 function closeModal(){$('#modalRoot').innerHTML=''}
@@ -289,6 +290,7 @@ $('#bellBtn').onclick=()=>go('updates');window.go=go;window.state=state;window.r
   const button=document.getElementById('themeToggle');
   const label=document.getElementById('themeLabel');
   function current(){return root.dataset.theme==='light'?'light':'dark'}
+  document.addEventListener('tf-theme-changed',sync);
   function sync(){
     const t=current();
     if(label) label.textContent=t==='dark'?'Dark':'Light';
@@ -301,6 +303,7 @@ $('#bellBtn').onclick=()=>go('updates');window.go=go;window.state=state;window.r
     const next=current()==='dark'?'light':'dark';
     root.dataset.theme=next;
     try{localStorage.setItem('techfinitys-theme',next)}catch(e){}
+    if(window.TFPreferences)window.TFPreferences.set('mode',next);
     sync();
   });
   sync();
