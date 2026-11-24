@@ -112,7 +112,7 @@
     if(isEmployee()&&!['dashboard','tasks','documents','issues','feed'].includes(ui.projectTab))ui.projectTab='dashboard';
     if(state.ctx?.role==='client'&&!['dashboard','tasks','documents','issues','feed','approvals'].includes(ui.projectTab))ui.projectTab='dashboard';
     const tabs=isEmployee()?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed']]:state.ctx?.role==='client'?[['dashboard','Dashboard'],['tasks','Tasks'],['documents','Documents'],['issues','Issues'],['feed','Feed'],['approvals','Approvals']]:[['dashboard','Dashboard'],['tasks','Tasks'],['workload','Workload'],['users','Users'],['reports','Reports'],['documents','Documents'],['phases','Phases'],['timelogs','Time Logs'],['issues','Issues'],['feed','Feed'],['timesheets','Timesheets'],['approvals','Approvals']];
-    const buttons=isManager()?`${button('✎ Edit',`projectModal('${p.id}')`)}${button('＋ Add task',`TFPlus.taskEditor('','${p.id}')`,'primary')}`:state.ctx.role==='client'?button('＋ Support ticket',"go('tickets')",'primary'):'';
+    const buttons=isManager()?`${button('✎ Edit',`projectModal('${p.id}')`)}${button('＋ Add task',`TFPlus.taskEditor('','${p.id}')`,'primary')}`:isEmployee()?button('＋ Add task',`TFPlus.employeeTaskEditor('${p.id}')`,'primary'):state.ctx.role==='client'?button('＋ Support ticket',"go('tickets')",'primary'):'';
     const tabHtml={dashboard:()=>dashboard('project:'+p.id,p),tasks:()=>taskWorkspace(p.id),workload:()=>workloadView(projectTasks(p.id),p.id),users:()=>projectUsers(p),reports:()=>projectReports(p),documents:()=>projectDocuments(p),phases:()=>projectPhases(p),timelogs:()=>projectTimeLogs(p),issues:()=>issueWorkspace(p.id),feed:()=>projectFeed(p),timesheets:()=>projectTimeLogs(p,true),approvals:()=>projectApprovals(p)}[ui.projectTab] || (()=>dashboard('project:'+p.id,p));
     return `<div class="tf-breadcrumb"><button onclick="TFPlus.backProjects()">Projects</button><span>›</span><span>${safe(p.code)} · ${safe(p.title)}</span></div>
       <div class="tf-project-hero"><div><div class="tf-overline">${safe(p.clientName)} ${p.groupName?'/ '+safe(p.groupName):''}</div><div class="tf-project-title"><h1>${safe(p.title)}</h1>${statusPill(p.status)}</div><p>${safe(p.description||'Deliverables, people and progress in one shared project space.')}</p><div class="tf-hero-info"><span>◉ ${safe(p.ownerName||'No owner')}</span><span>▣ Due ${date(p.dueDate)}</span><span>◈ ${p.progress}% complete</span></div></div><div class="tf-hero-actions">${buttons}</div></div>
@@ -227,7 +227,7 @@
     </div><div class="tf-task-tools">
       ${isManager()?`<select aria-label="Group tasks" onchange="TFPlus.changeGroup(this.value)">${optionList([['none','No grouping'],['taskList','By task list'],['project','By project'],['status','By status'],['owner','By owner']],ui.groupBy,'Group by…')}</select>`:''}
       ${button('☷ List',"TFPlus.setView('list')",ui.view==='list'?'selected':'')}${button('▦ Kanban',"TFPlus.setView('board')",ui.view==='board'?'selected':'')}${button('▥ Gantt',"TFPlus.setView('gantt')",ui.view==='gantt'?'selected':'')}${isManager()?button('▤ Workload',"TFPlus.setView('workload')",ui.view==='workload'?'selected':''):''}
-      ${isManager()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):''}
+      ${isManager()?button('＋ Add task',`TFPlus.taskEditor('','${projectId}')`,'primary'):isEmployee()&&projectId?button('＋ Add task',`TFPlus.employeeTaskEditor('${projectId}')`,'primary'):''}
     </div></div>`;
   }
   // Draft entry lives *inside* the task table. Save on Enter or with the Add button;
@@ -433,6 +433,31 @@
     return `${taskToolbar(projectId)}${ui.view==='board'?boardView(rows):ui.view==='gantt'?ganttView(rows,projectId):ui.view==='workload'&&isManager()?workloadView(rows,projectId):taskGrid(rows,projectId)}${!isEmployee()?filterDrawer():''}`;
   }
   function tasks(){return `${header(isEmployee()?'My tasks':'Tasks',isEmployee()?'Your assigned tasks, deadlines, and progress. Select any row to open its details.':'Plan, group, assign, filter and deliver every work item.',isManager()?`<a class="tf-btn" href="/api/project-export/tasks/">↓ Export tasks</a>`:'')}${taskWorkspace('')}`}
+
+  function employeeTaskEditor(projectId=''){
+    if(!isEmployee())return;
+    const project=projectBy(projectId);
+    if(!project)return;
+    formModal('Add my task',
+      'Create a task for yourself in '+project.title+'. Admins and managers can see the task. It is private from the client by default.',
+      `<div class="tf-employee-task-form"><div class="tf-task-form-project"><strong>◈ ${safe(project.title)}</strong><small>${safe(project.clientName)}</small></div>
+        <label>Task name<input name="title" maxlength="220" required autofocus placeholder="What needs to be done?"></label>
+        <div class="tf-form-grid"><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="low">Low</option></select></label>
+        <label>Due date<input type="date" name="dueDate"></label></div>
+        <label>Details (optional)<textarea name="description" maxlength="4000" rows="3" placeholder="Add task instructions or notes"></textarea></label>
+        <div class="tf-task-help">Assigned to you · To do · Internal task</div></div>`,
+      async (form,fd)=>{
+        const o=Object.fromEntries(fd);
+        const due=o.dueDate?o.dueDate+'T17:00:00':'';
+        const result=await fetchJSON('/api/workspace/',{
+          method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':decodeURIComponent(cookie('csrftoken'))},
+          body:JSON.stringify({action:'self_create_task',projectId,title:o.title,priority:o.priority,description:o.description,dueAt:due})
+        });
+        if(result.error)throw Error(result.error);
+        state.notice='Your task was added successfully';
+        await load();
+      },'Create my task');
+  }
 
   function taskEditor(id='',fixedProject='',forceEdit=false){
     const t=state.tasks.find(x=>x.id===id)||{};
@@ -909,7 +934,7 @@
     return oldLegacy(kind);
   }
 
-  const publicAPI={projects,tasks,dashboard,legacy:legacyPlus,openProject,backProjects,switchProjectTab,
+  const publicAPI={projects,tasks,dashboard,legacy:legacyPlus,openProject,backProjects,switchProjectTab,employeeTaskEditor,
     sortProjects(key){ui.projectDesc=ui.projectSort===key?!ui.projectDesc:false;ui.projectSort=key;render()},
     changeProjectPage(delta){ui.projectPage=Math.max(1,ui.projectPage+delta);render()},
     setProjectFilter(key,value){ui[key]=value;if(key!=='projectPage')ui.projectPage=1;render();if(key==='projectQuery'){const el=document.querySelector('input[aria-label="Search projects"]');el?.focus();el?.setSelectionRange(value.length,value.length)}},
