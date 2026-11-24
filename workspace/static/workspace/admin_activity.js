@@ -162,7 +162,12 @@
     const main=document.getElementById('mainContent');if(!main)return;
     const s=ui.summary||{},total=(s.pendingLeaves||0)+(s.pendingTimesheets||0)+(s.pendingApprovals||0);
     document.getElementById('tfAdminOverviewStrip')?.remove();
-    main.insertAdjacentHTML('afterbegin',`<button type="button" id="tfAdminOverviewStrip" class="tf-ac-overview" onclick="go('admin_activity')"><span class="tf-ac-overview-icon">◎</span><span><strong>Team activity & approvals</strong><small>${total} requests need review · ${s.onShift||0} employees on shift · ${s.unread||0} unread alerts</small></span><span class="tf-ac-overview-cta">Open activity center →</span></button>`);
+    // Keep the summary in the dashboard document flow *after* its header.
+    // Inserting it as the first child caused it to overlap the fixed security
+    // strip under some theme/layout combinations.
+    const header=main.querySelector(':scope > .tf-header, :scope > .heading, :scope > .os-heading');
+    const destination=header||main;
+    destination.insertAdjacentHTML(header?'afterend':'beforeend',`<button type="button" id="tfAdminOverviewStrip" class="tf-ac-overview" onclick="go('admin_activity')"><span class="tf-ac-overview-icon">◎</span><span><strong>Team activity & approvals</strong><small>${total} requests need review · ${s.onShift||0} employees on shift · ${s.unread||0} unread alerts</small></span><span class="tf-ac-overview-cta">Open activity center →</span></button>`);
   }
   async function markAll(){if(!isAdmin())return;try{const r=await fetch('/api/admin-activity/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({action:'mark_seen'})});const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to mark alerts read');ui.summary={...(ui.summary||{}),unread:0};updateBadges();draw();}catch(e){ui.error=e.message;draw();}}
   function review(kind,id,status){if(!isAdmin())return;
