@@ -645,3 +645,25 @@ html[data-theme='dark'] main#mainContent :is(.tf-client-register,.tf-widget,.tf-
 .tf-employee-profile-actions .tf-employee-danger{background:rgba(232,66,93,.12)!important;color:#d6435c!important;border:1px solid rgba(232,66,93,.45)!important}
 html[data-theme='dark'] .tf-employee-profile-actions .tf-employee-danger{color:#ff9fb3!important}
 @media(max-width:560px){.tf-employee-details-grid{grid-template-columns:1fr}.tf-employee-profile-actions>*{flex:1}}
+
+
+/* Real workflow automation builder */
+.tf-flow-list{display:grid;gap:14px;margin-top:18px}
+.tf-flow-card{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:20px;border-radius:17px;
+ background:var(--glass-surface,var(--panel));border:1px solid var(--glass-stroke,var(--border));
+ box-shadow:var(--glass-glow,var(--shadow));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.tf-flow-card>div{flex:1;min-width:220px}
+.tf-flow-card h3{margin:0 0 8px!important;font-size:15px;color:var(--text)}
+.tf-flow-card p{color:var(--muted);margin:6px 0}
+.tf-flow-card small{color:var(--muted)}
+.tf-flow-builder{min-width:0;color:var(--text)}
+.tf-flow-builder>p{margin-bottom:18px}
+.tf-flow-step{margin:17px 0;padding:16px;border:1px solid var(--border);border-radius:13px;background:var(--raised)}
+.tf-flow-step h3{margin:0 0 13px!important;color:var(--text)}
+.tf-flow-action{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
+.tf-flow-action .tf-flow-type{min-width:175px;flex:1}
+.tf-flow-action .tf-flow-title,.tf-flow-action .tf-flow-priority{min-width:155px;flex:1}
+.tf-flow-action small{flex:1;color:var(--muted)}
+.tf-flow-action>button{padding:8px 11px}
+.tf-flow-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+@media(max-width:600px){.tf-flow-action>*{width:100%}.tf-flow-footer button{flex:1}}
