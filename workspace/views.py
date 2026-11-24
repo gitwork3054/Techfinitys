@@ -400,6 +400,7 @@ def workspace_api(request):
                     'compactMode': (True,False),
                     'feedNotifications': (True,False),
                     'soundNotifications': (True,False),
+                    'desktopNotifications': (True,False),
                     'emailNotifications': (True,False),
                     'activityReminders': (True,False),
                 }
