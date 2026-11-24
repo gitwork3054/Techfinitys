@@ -1,0 +1,50 @@
+/* Nonblocking live notification popups for all CRM roles. */
+.tf-notification-popups{
+ position:fixed;right:22px;bottom:24px;z-index:11000;
+ width:min(365px,calc(100vw - 28px));display:flex;flex-direction:column;
+ align-items:stretch;gap:10px;pointer-events:none;
+}
+.tf-alert-popup{
+ display:flex;align-items:flex-start;gap:12px;min-width:0;
+ padding:15px 13px;border-radius:15px;
+ border:1px solid rgba(255,255,255,.8);
+ background:rgba(248,251,255,.96);color:#142441;
+ box-shadow:0 10px 40px rgba(31,58,107,.23),0 0 20px rgba(83,157,255,.13);
+ backdrop-filter:blur(22px) saturate(135%);
+ -webkit-backdrop-filter:blur(22px) saturate(135%);
+ pointer-events:auto;animation:tf-alert-slide .24s ease both;
+}
+html[data-theme='dark'] .tf-alert-popup{
+ border-color:rgba(150,188,245,.46);
+ background:rgba(23,34,70,.95);color:#f0f6ff;
+ box-shadow:0 14px 38px rgba(0,0,0,.35),0 0 23px rgba(96,153,255,.20);
+}
+.tf-alert-icon{
+ flex:0 0 36px;width:36px;height:36px;display:grid;place-items:center;
+ border-radius:11px;background:rgba(40,121,234,.13);color:#2375e0;font-size:21px;
+}
+html[data-theme='dark'] .tf-alert-icon{color:#91cbff;background:rgba(75,153,245,.18)}
+.tf-alert-copy{flex:1;min-width:0}
+.tf-alert-copy strong{display:block;font-size:13px;line-height:1.35;font-weight:800;overflow-wrap:anywhere}
+.tf-alert-copy p{margin:5px 0 9px;color:#566984;font-size:12px;line-height:1.5;overflow-wrap:anywhere;max-height:75px;overflow:hidden}
+html[data-theme='dark'] .tf-alert-copy p{color:#c2d2ee}
+.tf-alert-open{
+ border:0!important;background:transparent!important;box-shadow:none!important;
+ color:#1975df!important;padding:0!important;
+ min-height:0!important;font-size:11px!important;font-weight:800!important;
+ cursor:pointer;text-align:left;
+}
+html[data-theme='dark'] .tf-alert-open{color:#9ac7ff!important}
+.tf-alert-close{
+ display:grid;place-items:center;align-self:flex-start;
+ background:transparent!important;border:0!important;
+ color:inherit!important;opacity:.75;font-size:19px!important;
+ min-width:22px!important;min-height:22px!important;padding:0!important;
+ box-shadow:none!important;cursor:pointer;
+}
+.tf-alert-close:hover{opacity:1}
+.tf-alert-popup :is(button):focus-visible{outline:2px solid #4c9afa;outline-offset:3px}
+@keyframes tf-alert-slide{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:730px){.tf-notification-popups{right:10px;bottom:14px;width:min(360px,calc(100vw - 84px))}}
+@media(prefers-reduced-motion:reduce){.tf-alert-popup{animation:none}}
+html[data-reduce-motion='yes'] .tf-alert-popup{animation:none!important}
