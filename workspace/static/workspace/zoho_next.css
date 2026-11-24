@@ -789,3 +789,70 @@ html[data-theme='dark'] main#mainContent :is(.tf-pane,.tf-widget,.tf-project-her
  from{opacity:.68;filter:saturate(105%)}
  to{opacity:1;filter:saturate(135%)}
 }
+
+
+/* Aurora trails v2 — use a separately served SVG, not an inlined data URI.
+   Explicit layering places the real luminous wave artwork above the gradient
+   but below UI content and protects labels from decorative overlays. */
+html[data-theme='light'] .main,
+html[data-theme='dark'] .main{
+  isolation:isolate!important;
+  position:relative!important;
+}
+html[data-theme='light'] .main::before,
+html[data-theme='dark'] .main::before,
+html[data-theme='light'] .main::after,
+html[data-theme='dark'] .main::after{
+  content:none!important;display:none!important;
+}
+html[data-theme='light'] .main > .tf-aurora-ribbons,
+html[data-theme='dark'] .main > .tf-aurora-ribbons{
+  position:absolute!important;
+  top:62px!important;
+  left:0!important;
+  right:0!important;
+  height:max(850px,calc(100vh - 62px))!important;
+  width:100%!important;
+  display:block!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  opacity:1!important;
+  background-image:url('/static/workspace/aurora_light_trails.svg')!important;
+  background-size:100% 100%!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  transform:translateZ(0);
+}
+html[data-theme='light'] .main > :not(.tf-aurora-ribbons),
+html[data-theme='dark'] .main > :not(.tf-aurora-ribbons){
+  position:relative!important;
+  z-index:1!important;
+}
+html[data-theme='light'] .main #mainContent,
+html[data-theme='dark'] .main #mainContent{
+  background:transparent!important;
+}
+html[data-theme='light'] .main .demo-bar,
+html[data-theme='dark'] .main .demo-bar{
+  background:color-mix(in srgb,var(--topbar) 94%,transparent)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+html[data-theme='dark'] .main > .tf-aurora-ribbons{
+  opacity:.82!important;
+  filter:saturate(160%) hue-rotate(10deg);
+}
+@media (prefers-reduced-motion:no-preference){
+  html[data-theme='light'] .main > .tf-aurora-ribbons,
+  html[data-theme='dark'] .main > .tf-aurora-ribbons{
+    animation:tf-wave-pulse 14s ease-in-out infinite alternate!important;
+  }
+}
+@keyframes tf-wave-pulse{
+ from{opacity:.72;filter:saturate(110%) brightness(.95)}
+ to{opacity:1;filter:saturate(140%) brightness(1.12)}
+}
+@media (prefers-reduced-motion:reduce){
+ html[data-theme='light'] .main > .tf-aurora-ribbons,
+ html[data-theme='dark'] .main > .tf-aurora-ribbons{animation:none!important;}
+}
