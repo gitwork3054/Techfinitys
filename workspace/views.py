@@ -333,6 +333,7 @@ def workspace_api(request):
             'context': {
                 'id': member.id, 'user': request.user.username, 'name': request.user.get_full_name() or request.user.username,
                 'role': member.role, 'roleLabel': member.get_role_display(), 'permissions': member.permissions or [],
+                'preferences': (Record.objects.filter(id=f'pref:{member.pk}',space='personal',kind='preferences').values_list('data',flat=True).first() or {}),
                 'profilePhotoUrl': f'/api/collaboration/avatar/{member.pk}/' if member.profile_photo else '',
                 'clientIds': [str(x) for x in client_ids], 'clientCodes': client_codes,
             },
@@ -366,6 +367,35 @@ def workspace_api(request):
 
     try:
         with transaction.atomic():
+            if action == 'save_preferences':
+                allowed_keys = {
+                    'fontSize': ('small','normal','large','extra'),
+                    'mode': ('light','dark','auto'),
+                    'accent': ('blue','orange','teal','red','green','purple'),
+                    'panel': ('aurora','solid','glass','minimal'),
+                    'landingPage': ('overview','projects','tasks','updates'),
+                    'reduceMotion': (True,False),
+                    'highContrast': (True,False),
+                    'compactMode': (True,False),
+                    'feedNotifications': (True,False),
+                    'emailNotifications': (True,False),
+                    'activityReminders': (True,False),
+                }
+                requested = data.get('preferences')
+                if not isinstance(requested,dict) or not requested or len(requested)>len(allowed_keys):
+                    raise ValueError('Invalid personal preferences')
+                if any(key not in allowed_keys or value not in allowed_keys[key]
+                       or (isinstance(value,bool) != isinstance(allowed_keys[key][0],bool))
+                       for key,value in requested.items()):
+                    raise ValueError('Unsupported preferences value')
+                ident = f'pref:{member.pk}'
+                row, _ = Record.objects.select_for_update().get_or_create(
+                    id=ident, defaults={'space':'personal','kind':'preferences','client':str(member.pk),'data':{}}
+                )
+                row.data = {**(row.data or {}), **requested}
+                row.save(update_fields=['data','updated_at'])
+                return JsonResponse({'ok':True,'preferences':row.data})
+
             # --- People & hierarchy -------------------------------------------------
             if action == 'create_client':
                 if not _can_manage_people(member):
