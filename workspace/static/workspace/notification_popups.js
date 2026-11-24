@@ -127,7 +127,7 @@
        oscillator.type='sine';
        oscillator.frequency.value=frequency;
        envelope.gain.setValueAtTime(0.0001,start+offset);
-       envelope.gain.exponentialRampToValueAtTime(0.055,start+offset+0.025);
+       envelope.gain.exponentialRampToValueAtTime(0.17,start+offset+0.025);
        envelope.gain.exponentialRampToValueAtTime(0.0001,start+offset+duration);
        oscillator.connect(envelope);envelope.connect(audioContext.destination);
        oscillator.start(start+offset);oscillator.stop(start+offset+duration+0.01);
