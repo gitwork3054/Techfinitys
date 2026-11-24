@@ -453,6 +453,7 @@ class ProjectDiscussion(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='discussions')
     author = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name='project_posts')
     body = models.TextField()
+    photo = models.ImageField(upload_to='project_feed/%Y/%m/', blank=True, null=True)
     visibility = models.CharField(max_length=12, choices=VISIBILITY, default='client')
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
     created_at = models.DateTimeField(auto_now_add=True)
