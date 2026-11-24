@@ -128,6 +128,14 @@ def login_view(request):
 
 
 def logout_view(request):
+    # Revoke browser push tokens for the session being signed out, so one
+    # employee's notifications cannot leak to the next user of this browser.
+    if request.user.is_authenticated and request.session.session_key:
+        from .models import PushSubscription
+        PushSubscription.objects.filter(
+            member__user=request.user,
+            session_key=request.session.session_key,
+        ).delete()
     membership = _member_for_user(request.user)
     if membership and membership.role in ('employee', 'manager'):
         _log(membership, 'Signed out', detail='Session signed out')
