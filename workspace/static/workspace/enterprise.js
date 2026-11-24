@@ -31,7 +31,7 @@
   menus.client = ['overview','projects','milestones','tasks','updates','approvals','tickets','calendar','content','deliverables','files','invoices','notes','settings'];
   // Employee navigation: keep only daily work; management is reserved for managers and admins.
   menus.employee = ['overview','tasks','projects','attendance','timesheets','leaves','calendar','updates','files','settings'];
-  menus.manager = ['overview','leads','clients','team','assignments','projects','milestones','tasks','attendance','timesheets','leaves','approvals','tickets','updates','calendar','deliverables','content','campaigns','shoots','files','invoices','reports','audit','workflows','settings'];
+  menus.manager = ['overview','leads','clients','team','assignments','projects','milestones','tasks','attendance','timesheets','leaves','approvals','tickets','updates','calendar','deliverables','content','shoots','files','invoices','reports','audit','workflows','settings'];
   menus.admin = [...menus.manager];
   const coreShell = shell;
   shell = function(){
@@ -43,7 +43,7 @@
     const roleNav = document.getElementById('nav');
     if (roleNav) {
       const category = k => ['overview','leads','clients','team','assignments'].includes(k)?'ORGANIZE':
-         ['projects','milestones','tasks','updates','calendar','notes','content','deliverables','campaigns','shoots'].includes(k)?'DELIVER':
+         ['projects','milestones','tasks','updates','calendar','notes','content','deliverables','shoots'].includes(k)?'DELIVER':
          ['attendance','timesheets','leaves'].includes(k)?'PEOPLE & TIME':
          ['approvals','tickets','files','invoices','collaboration','issues'].includes(k)?'CLIENT SERVICE':'CONTROL';
       const groups={}; for(const key of menus[role]||[]) (groups[category(key)]||=([])).push(key);
