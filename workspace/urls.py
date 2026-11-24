@@ -1,6 +1,10 @@
 from django.urls import path
-from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center, task_collab
+from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center, task_collab, push_notifications
 urlpatterns=[
+ path('sw.js',push_notifications.service_worker,name='push_worker'),
+ path('api/push/config/',push_notifications.push_config,name='push_config'),
+ path('api/push/subscription/',push_notifications.push_subscription,name='push_subscription'),
+
  path('api/admin-activity/',activity_center.admin_activity_api,name='admin_activity_api'),
  path('api/billing/', billing.billing_api, name='billing_api'),
  path('api/billing/pdf/<uuid:invoice_id>/', billing.invoice_pdf, name='billing_pdf'),
