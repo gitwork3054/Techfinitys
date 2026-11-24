@@ -193,15 +193,15 @@ def collaboration_api(request):
                     chat_memberships__conversation=convo,
                     is_active=True, user__is_active=True,
                 ).exclude(pk=actor.pk).distinct()
-                Notification.objects.bulk_create([
-                    Notification(
+                # Individual saves trigger the post-commit browser push signal.
+                # bulk_create bypasses Django post_save and would drop push.
+                for recipient in recipients:
+                    Notification.objects.create(
                         recipient=recipient,
                         title=f'New chat from {_person(actor)}'[:220],
                         body=body[:160],
                         link=f'#workchat/{convo.pk}',
                     )
-                    for recipient in recipients
-                ])
             return JsonResponse({'ok':True, 'message':_message(message)})
         if action == 'read_chat':
             convo = _is_chat_member(actor, data.get('conversationId'))
