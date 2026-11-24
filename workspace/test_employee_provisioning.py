@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from workspace.models import Member
 
@@ -200,6 +200,7 @@ class DemoRecordsTests(TestCase):
         self.assertEqual(len([p for p in again.json()['projects'] if p['clientName'].startswith('DEMO |')]), 2)
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)
 class BrowserPushSubscriptionTests(TestCase):
     def setUp(self):
         from django.contrib.auth.models import User
