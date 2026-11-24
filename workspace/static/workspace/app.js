@@ -82,7 +82,47 @@ function clients(){
       <div class="tf-client-table-wrap"><table class="tf-client-table"><thead><tr><th>Code</th><th>Client</th><th>Company</th><th>Package</th><th>Assigned team</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="tf-client-empty"><strong>No clients yet</strong><span>Use New client to create your first workspace.</span></td></tr>'}</tbody></table></div>
     </section>`;
 }
-function team(){let members=state.members.filter(m=>m.role!=='client');return `${heading('Reporting lines and permissions are separate from client assignments.')}${toolbar(['admin','manager'].includes(state.ctx.role)?'<button class="primary" onclick="memberModal()">＋ New employee</button>':'')}<div class="hierarchy">${members.map(m=>`<article class="person"><span class="avatar">${initials(m.name)}</span><div><h3>${esc(m.name)}</h3><p>${esc(m.jobTitle||m.roleLabel)}${m.department?' · '+esc(m.department):''}</p><small>Reports to: ${esc(m.managerName||'Top level')}</small></div>${badge(m.active?'Active':'Inactive')}</article>`).join('')}</div>`}
+function team(){let members=state.members.filter(m=>m.role!=='client');return `${heading('Reporting lines and permissions are separate from client assignments.')}${toolbar(['admin','manager'].includes(state.ctx.role)?'<button class="primary" onclick="memberModal()">＋ New employee</button>':'')}<div class="hierarchy">${members.map(m=>`<button type="button" class="person tf-employee-card" onclick="employeeDetails(${Number(m.id)})" aria-label="View ${esc(m.name)} employee details"><span class="avatar">${initials(m.name)}</span><span class="tf-employee-card-info"><strong>${esc(m.name)}</strong><small>${esc(m.jobTitle||m.roleLabel)}${m.department?' · '+esc(m.department):''}</small><small>Reports to: ${esc(m.managerName||'Top level')}</small></span>${badge(m.active?'Active':'Inactive')}<span class="tf-employee-card-arrow">›</span></button>`).join('')}</div>`;}
+function employeeDetails(id){
+  const m=state.members.find(x=>Number(x.id)===Number(id));if(!m)return;
+  const projects=state.projects.filter(p=>Number(p.ownerId)===Number(id));
+  const assigned=state.tasks.filter(t=>Number(t.assignedTo)===Number(id)||(t.assigneeIds||[]).map(Number).includes(Number(id)));
+  const clients=state.assignments.filter(a=>Number(a.employeeId)===Number(id)&&a.active).map(a=>state.clients.find(c=>String(c.id)===String(a.clientId))?.name).filter(Boolean);
+  const admin=state.ctx?.role==='admin';
+  openModal(`<div class="tf-employee-dialog"><span class="eyebrow">TEAM / EMPLOYEE PROFILE</span><div class="tf-employee-profile-top"><span class="avatar">${initials(m.name)}</span><div><h2>${esc(m.name)}</h2><p>${esc(m.roleLabel)} · ${esc(m.active?'Active':'Inactive')}</p></div></div><div class="tf-employee-details-grid">
+    <div><small>Username</small><strong>${esc(m.username)}</strong></div><div><small>Email</small><strong>${esc(m.email||'Not set')}</strong></div>
+    <div><small>Phone</small><strong>${esc(m.phone||'Not set')}</strong></div><div><small>Department</small><strong>${esc(m.department||'Not set')}</strong></div>
+    <div><small>Job title</small><strong>${esc(m.jobTitle||'Not set')}</strong></div><div><small>Reports to</small><strong>${esc(m.managerName||'Top level')}</strong></div>
+    <div><small>Assigned clients</small><strong>${esc(clients.join(', ')||'None')}</strong></div><div><small>Work</small><strong>${projects.length} owned projects · ${assigned.length} tasks</strong></div>
+  </div><div class="tf-employee-profile-actions"><button type="button" onclick="closeModal()">Close</button><button type="button" class="primary" onclick="editEmployee(${Number(m.id)})">✎ Edit details</button>${admin&&m.role!=='admin'?`<button type="button" class="tf-employee-danger" onclick="deleteEmployee(${Number(m.id)})">Delete employee</button>`:''}</div></div>`);
+}
+function editEmployee(id){
+  const m=state.members.find(x=>Number(x.id)===Number(id));if(!m)return;
+  if(!['admin','manager'].includes(state.ctx?.role))return;
+  const managerOptions=state.members.filter(p=>['manager','admin'].includes(p.role)&&Number(p.id)!==Number(id));
+  const names=(m.name||'').split(' ');const first=m.name===m.username?'':names.shift()||'';const last=m.name===m.username?'':names.join(' ');
+  const managerOnly=state.ctx.role==='admin';
+  openModal(`<div class="tf-employee-dialog"><span class="eyebrow">TEAM / EDIT EMPLOYEE</span><h2>Edit ${esc(m.name)}</h2><form id="tfEditEmployeeForm"><div class="form-grid">
+    <label>First name<input name="firstName" required value="${esc(first)}"></label><label>Last name<input name="lastName" value="${esc(last)}"></label>
+    <label>Username<input name="username" required value="${esc(m.username)}"></label><label>Email<input type="email" name="email" value="${esc(m.email||'')}"></label>
+    <label>Phone<input name="phone" value="${esc(m.phone||'')}"></label><label>Department<input name="department" value="${esc(m.department||'')}"></label>
+    <label>Job title<input name="jobTitle" value="${esc(m.jobTitle||'')}"></label>
+    <label>Reports to<select name="managerId"><option value="">Top level</option>${managerOptions.map(x=>`<option value="${x.id}" ${Number(m.managerId)===Number(x.id)?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+    ${managerOnly?`<label>Role<select name="role">${[['employee','Employee'],['manager','Office Manager'],['admin','Super Admin']].map(([v,s])=>`<option value="${v}" ${m.role===v?'selected':''}>${s}</option>`).join('')}</select></label><label>New password (optional)<input type="password" name="password" minlength="4" autocomplete="new-password" placeholder="Leave blank to keep current"></label>`:''}
+    <label>Status<select name="active"><option value="true" ${m.active?'selected':''}>Active</option><option value="false" ${!m.active?'selected':''}>Inactive</option></select></label>
+  </div><div class="tf-employee-profile-actions"><button type="button" onclick="employeeDetails(${Number(id)})">Cancel</button><button type="submit" class="primary">Save changes</button></div></form></div>`);
+  document.getElementById('tfEditEmployeeForm').onsubmit=async event=>{
+    event.preventDefault();const form=event.currentTarget;const button=form.querySelector('[type="submit"]');button.disabled=true;
+    const values=Object.fromEntries(new FormData(form));values.active=values.active==='true';if(!values.password)delete values.password;
+    try{await post({action:'update_member',memberId:id,...values});closeModal();}catch(error){alert(error.message);button.disabled=false;}
+  };
+}
+async function deleteEmployee(id){
+  if(state.ctx?.role!=='admin'||Number(state.ctx.id)===Number(id))return;
+  const m=state.members.find(x=>Number(x.id)===Number(id));if(!m||m.role==='admin')return;
+  if(!confirm(`Remove access for ${m.name}? The employee will be deactivated, their client assignments disabled, and task, attendance, leave and audit history preserved. This can be reversed by editing their status.`))return;
+  try{await post({action:'delete_member',memberId:id});closeModal();}catch(error){alert(error.message)}
+}
 function assignments(){let rows=state.assignments.map(a=>{let c=state.clients.find(x=>x.id===a.clientId),m=state.members.find(x=>x.id===a.employeeId);return `<tr><td>${esc(c?.name||'')}</td><td>${esc(m?.name||'')}</td><td>${esc(a.roleTitle)}</td><td>${a.isPrimary?'Primary':'Member'}</td><td><button onclick="removeAssignment(${a.id})">Remove</button></td></tr>`}).join('');return `${heading('Employees only see client workspaces explicitly assigned to them.')}${toolbar('<button class="primary" onclick="assignmentModal()">＋ Assign employee</button>')}<div class="panel"><table><thead><tr><th>Client</th><th>Employee</th><th>Responsibility</th><th>Type</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="5">No assignments.</td></tr>'}</tbody></table></div>`}
 function projects(){return `${heading('Projects group tasks, notes and client progress under one delivery stream.')}${toolbar(state.ctx.role!=='client'?'<button class="primary" onclick="projectModal()">＋ New project</button>':'')}<div class="cards">${state.projects.map(p=>`<article class="record-card"><div class="record-top"><span class="eyebrow">${esc(p.clientName)}</span>${badge(p.statusLabel)}</div><h3>${esc(p.title)}</h3><p>${esc(p.description||'')}</p><div class="progress"><i style="width:${p.progress}%"></i></div><div class="meta"><span>${p.progress}% complete</span><span>Owner: ${esc(p.ownerName||'Unassigned')}</span><span>Due: ${shortDate(p.dueDate)}</span></div>${state.ctx.role!=='client'?`<button onclick="projectModal('${p.id}')">Edit project</button>`:''}</article>`).join('')||'<div class="empty">No projects yet.</div>'}</div>`}
 function taskRow(t){return `<div class="task-row"><div><strong>${esc(t.title)}</strong><small>${esc(t.clientName)} · ${esc(t.assignedName||'Unassigned')} · ${esc(t.priorityLabel)}</small></div>${badge(t.statusLabel)}${state.ctx.role!=='client'?`<select onchange="setTaskStatus('${t.id}',this.value)">${['todo','in_progress','review','blocked','completed'].map(x=>`<option value="${x}" ${x===t.status?'selected':''}>${({todo:'To do',in_progress:'In progress',review:'In review',blocked:'Blocked',completed:'Completed'})[x]}</option>`).join('')}</select>`:''}</div>`}
