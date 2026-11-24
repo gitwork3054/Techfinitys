@@ -174,7 +174,8 @@ def _get(member):
             {'id': str(r.pk), 'projectId': str(r.project_id), 'body': r.body,
              'author': _name(r.author) if r.author else 'System',
              'authorId': r.author_id, 'visibility': r.visibility,
-             'parentId': str(r.parent_id) if r.parent_id else '', 'createdAt': r.created_at.isoformat()}
+             'parentId': str(r.parent_id) if r.parent_id else '', 'createdAt': r.created_at.isoformat(),
+             'photoUrl': f'/api/projects-plus/feed-photo/{r.pk}/' if r.photo else ''}
             for r in discussions[:900]
         ],
         'projectDocs': [_doc_json(r) for r in documents[:800]],
@@ -457,6 +458,86 @@ def projects_plus_api(request):
         return JsonResponse({'error': str(exc)}, status=403)
     except (ValueError, TypeError, ValidationError, IntegrityError) as exc:
         return JsonResponse({'error': str(exc)}, status=400)
+
+
+@require_http_methods(['POST'])
+def project_feed_photo_upload(request):
+    """Post an update with an optional employee photo, scoped to its project."""
+    try:
+        from PIL import Image, UnidentifiedImageError
+        member = _context(request)
+        _staff(member)
+        project = _project(member, request.POST.get('projectId'))
+        visibility = _choice(request.POST.get('visibility', 'team'), {'client', 'team'}, 'visibility')
+        body = _short(request.POST.get('body'), 4000, 'Message', required=False)
+        photo = request.FILES.get('photo')
+        if not photo:
+            raise ValueError('Select a photo to upload')
+        if not 0 < photo.size <= 5_000_000:
+            raise ValueError('Photo must be smaller than 5 MB')
+        ext = Path(photo.name).suffix.lower()
+        if ext not in {'.jpg', '.jpeg', '.png', '.webp'}:
+            raise ValueError('Choose a JPG, PNG or WebP photo')
+        try:
+            image = Image.open(photo)
+            image.verify()
+            if image.format not in ('JPEG', 'PNG', 'WEBP'):
+                raise ValueError('Unsupported photo format')
+            photo.seek(0)
+            image = Image.open(photo)
+            if image.width * image.height > 24_000_000:
+                raise ValueError('Photo dimensions are too large')
+            image.load()
+            photo.seek(0)
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+            raise ValueError('Photo could not be verified')
+        parent = None
+        if request.POST.get('parentId'):
+            parent = ProjectDiscussion.objects.filter(
+                pk=request.POST['parentId'], project=project
+            ).first()
+            if not parent:
+                raise PermissionError('Parent update is not available')
+            if visibility == 'client' and parent.visibility == 'team':
+                raise PermissionError('Internal replies cannot be made client-visible')
+        post = ProjectDiscussion.objects.create(
+            project=project, author=member, body=body,
+            visibility=visibility, parent=parent, photo=photo,
+        )
+        _log(member, 'Posted project update with photo', post, project.client, (body or 'Photo attached')[:120])
+        _notify_project(project, f'New project photo update: {project.title}',
+                        (body or 'A photo was attached')[:180],
+                        exclude=member, client_visible=visibility == 'client')
+        return JsonResponse({'ok': True, 'id': str(post.pk)}, status=201)
+    except PermissionError as exc:
+        return JsonResponse({'error': str(exc)}, status=403)
+    except (ValueError, TypeError, ValidationError) as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+
+@require_http_methods(['GET'])
+def project_feed_photo(request, post_id):
+    """Serve images through Django's membership and visibility checks."""
+    try:
+        member = _context(request)
+    except PermissionError:
+        return HttpResponse('Sign in required', status=401)
+    post = ProjectDiscussion.objects.filter(
+        pk=post_id, project__client_id__in=_client_ids_for(member)
+    ).first()
+    if not post or not post.photo or (member.role == 'client' and post.visibility != 'client'):
+        return HttpResponse('Photo not found', status=404)
+    try:
+        stream = post.photo.open('rb')
+    except (OSError, FileNotFoundError):
+        return HttpResponse('Photo storage unavailable', status=404)
+    suffix = Path(post.photo.name).suffix.lower()
+    media_type = {'.png': 'image/png', '.webp': 'image/webp',
+                  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}.get(suffix, 'application/octet-stream')
+    response = FileResponse(stream, content_type=media_type)
+    response['Cache-Control'] = 'private, no-store'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @require_http_methods(['POST'])
