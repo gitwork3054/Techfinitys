@@ -198,3 +198,53 @@ class DemoRecordsTests(TestCase):
         again = self.client.get('/api/workspace/')
         self.assertEqual(again.status_code, 200)
         self.assertEqual(len([p for p in again.json()['projects'] if p['clientName'].startswith('DEMO |')]), 2)
+
+
+class BrowserPushSubscriptionTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from workspace.models import Member
+        self.member = Member.objects.create(
+            user=User.objects.create_user('push_employee',password='push-test-1234'),
+            role='employee',
+        )
+
+    def test_push_subscriptions_are_scoped_and_revoked_at_logout(self):
+        import json
+        from workspace.models import PushSubscription
+        from django.test import Client
+        endpoint = 'https://fcm.googleapis.com/fcm/send/push-integration-test'
+        payload = {
+            'action': 'subscribe', 'endpoint': endpoint,
+            'keys': {'p256dh': 'x'*80, 'auth': 'y'*22},
+        }
+        self.client.force_login(self.member.user)
+        created = self.client.post('/api/push/subscription/',
+            data=json.dumps(payload),content_type='application/json')
+        self.assertEqual(created.status_code, 200, created.content)
+        self.assertEqual(PushSubscription.objects.filter(member=self.member).count(),1)
+        self.client.get('/logout/')
+        self.assertFalse(PushSubscription.objects.filter(endpoint=endpoint).exists())
+
+    def test_invalid_and_external_push_endpoints_are_rejected(self):
+        import json
+        from workspace.models import PushSubscription
+        self.client.force_login(self.member.user)
+        for endpoint in (
+            'http://fcm.googleapis.com/fcm/send/unsafe',
+            'https://evil.example.test/collector',
+            'https://fcm.googleapis.com.evil.example.test/collector',
+            'https://127.0.0.1/private',
+        ):
+            result=self.client.post('/api/push/subscription/',
+                data=json.dumps({'action':'subscribe','endpoint':endpoint,
+                    'keys':{'p256dh':'x'*80,'auth':'y'*22}}),
+                content_type='application/json')
+            self.assertEqual(result.status_code, 400, endpoint)
+        self.assertEqual(PushSubscription.objects.count(),0)
+
+    def test_worker_served_from_root_scope(self):
+        response=self.client.get('/sw.js')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response['Service-Worker-Allowed'],'/')
+        self.assertIn(b'showNotification',response.content)
