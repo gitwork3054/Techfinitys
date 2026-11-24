@@ -640,6 +640,14 @@ def workspace_api(request):
                     client_visible=False,
                 )
                 _log(member, 'Created own project task', t, project.client, title)
+                # Self-service tasks appear in the creator's inbox as well,
+                # confirming the task was saved and assigned to their account.
+                Notification.objects.create(
+                    recipient=member, client=project.client,
+                    title=f'Task added: {t.title}'[:220],
+                    body=f'Assigned to you in {project.title}.',
+                    link=f'#projects/{project.pk}/tasks',
+                )
                 return JsonResponse({'ok': True, 'id': str(t.pk)}, status=201)
 
             # --- Tasks --------------------------------------------------------------
@@ -731,7 +739,12 @@ def workspace_api(request):
                 _log(member,'Saved task',t,client,f'{t.title} → {assignee or "Unassigned"}')
                 if previous_status is not None: _run_task_workflows(t, previous_status, member)
                 if assignee and assignee != member:
-                    Notification.objects.create(recipient=assignee,client=client,title=f'Task assigned: {t.title}',body=f'{client.name} · {t.get_priority_display()} priority')
+                    Notification.objects.create(
+                        recipient=assignee, client=client,
+                        title=f'Task assigned: {t.title}'[:220],
+                        body=f'{client.name} · {t.get_priority_display()} priority',
+                        link=f'#projects/{t.project_id}/tasks' if t.project_id else '#tasks',
+                    )
                 return JsonResponse({'ok':True})
 
             if action == 'task_status':
