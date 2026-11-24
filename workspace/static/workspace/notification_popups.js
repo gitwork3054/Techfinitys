@@ -71,8 +71,8 @@
    // Accept only local SPA hashes and same-origin relative paths.
    if(link.startsWith('#workchat/')){
      const chatId=link.slice('#workchat/'.length);
-     if(/^[0-9a-f-]{36}$/i.test(chatId)&&window.TFCollab?.openThread){
-       window.TFCollab.openThread(chatId);
+     if(/^[0-9a-f-]{36}$/i.test(chatId)&&window.TFCollab?.openNotificationChat){
+       window.TFCollab.openNotificationChat(chatId);
      }else if(window.TFCollab?.show)window.TFCollab.show('chats');
    }else if(link.startsWith('#')){
      const route=link.slice(1).split('/')[0];
