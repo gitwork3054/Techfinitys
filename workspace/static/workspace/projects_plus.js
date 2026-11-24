@@ -849,15 +849,55 @@
     const messages=arr('projectFeed').filter(x=>x.projectId===p.id).slice().sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
     return `<section class="tf-pane">${boxTitle('Project collaboration',button('＋ Post update',`TFPlus.feedModal('${p.id}')`,'primary'))}
       <p class="tf-pane-sub">A threaded space for project discussion. Internal team notes stay hidden from the client portal.</p>
-      <div class="tf-feed">${messages.map(m=>`<article class="tf-feed-post ${m.parentId?'reply':''}"><span class="tf-feed-avatar">${initials(m.author)}</span><div><div class="tf-feed-meta"><strong>${safe(m.author)}</strong>${statusPill(m.visibility)}<time>${fmt(m.createdAt)}</time></div><p>${safe(m.body)}</p><button onclick="TFPlus.feedModal('${p.id}','${m.id}')">↳ Reply</button></div></article>`).join('')||empty('No project discussions yet','Share an update, ask a question or collaborate on a task.')}</div></section>`;
+      <div class="tf-feed">${messages.map(m=>`<article class="tf-feed-post ${m.parentId?'reply':''}"><span class="tf-feed-avatar">${initials(m.author)}</span><div><div class="tf-feed-meta"><strong>${safe(m.author)}</strong>${statusPill(m.visibility)}<time>${fmt(m.createdAt)}</time></div><p>${safe(m.body)}</p>${m.photoUrl?`<a class="tf-feed-image-link" href="${safe(m.photoUrl)}" target="_blank" rel="noopener" aria-label="Open attached photo"><img src="${safe(m.photoUrl)}" class="tf-feed-photo" alt="Project update photo attached by ${safe(m.author)}" loading="lazy"></a>`:''}<button onclick="TFPlus.feedModal('${p.id}','${m.id}')">↳ Reply</button></div></article>`).join('')||empty('No project discussions yet','Share an update, ask a question or collaborate on a task.')}</div></section>`;
   }
   function feedModal(projectId='',parentId=''){
     const p=projectBy(projectId)||state.projects[0];if(!p)return;
-    formModal(parentId?'Reply to discussion':'Post project update','Messages are visible only to people who can access this project.',
+    const canUpload=isStaff();
+    formModal(parentId?'Reply to discussion':'Post project update','Messages and photos are visible only to people who can access this project.',
       `${projectId?'':`<label>Project<select name="projectId">${state.projects.map(p=>`<option value="${p.id}">${safe(p.title)}</option>`).join('')}</select></label>`}
-      <label>Message<textarea name="body" required maxlength="4000" rows="5" placeholder="Write your project update…"></textarea></label>
-      ${isStaff()?`<label>Visibility<select name="visibility"><option value="client">Client + team</option><option value="team">Internal team only</option></select></label>`:''}`,
-      async(f,fd)=>plusPost({action:'post_project_feed',projectId:projectId||fd.get('projectId')||p.id,parentId,body:fd.get('body'),visibility:fd.get('visibility')||'client'}),'Post message');
+      <label>Message<textarea name="body" ${canUpload?'':'required'} maxlength="4000" rows="5" placeholder="Write your project update…"></textarea></label>
+      ${canUpload?`<label class="tf-update-photo-label">Attach photo (optional)<input type="file" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><small>JPG, PNG or WebP · maximum 5 MB</small></label><div class="tf-update-photo-preview" hidden><img alt="Selected project photo preview"><span></span><button type="button" class="tf-update-photo-remove">Remove</button></div>`:''}
+      ${canUpload?`<label>Visibility<select name="visibility"><option value="team" selected>Internal team only</option><option value="client">Client + team</option></select></label>`:''}`,
+      async(f,fd)=>{
+        const project=projectId||fd.get('projectId')||p.id;
+        const image=fd.get('photo');
+        if(image&&image.size){
+          if(image.size>5_000_000)throw Error('Photo must be smaller than 5 MB');
+          const payload=new FormData();
+          payload.set('photo',image);payload.set('projectId',project);
+          payload.set('parentId',parentId);
+          payload.set('body',fd.get('body')||'');
+          payload.set('visibility',fd.get('visibility')||'team');
+          await fetchJSON('/api/projects-plus/feed-photo/upload/',{
+            method:'POST',headers:{'X-CSRFToken':decodeURIComponent(cookie('csrftoken'))},
+            body:payload
+          });
+          state.notice='Update and photo posted successfully';await load();
+        }else{
+          if(!String(fd.get('body')||'').trim())throw Error('Enter a message or attach a photo');
+          await plusPost({action:'post_project_feed',projectId:project,parentId,body:fd.get('body'),visibility:fd.get('visibility')||'client'});
+        }
+      },'Post update');
+    const form=document.getElementById('tfModalForm');
+    const input=form?.querySelector('input[name="photo"]');
+    if(!input)return;
+    const preview=form.querySelector('.tf-update-photo-preview');
+    const image=preview.querySelector('img');
+    const name=preview.querySelector('span');
+    let objectUrl=null;
+    input.addEventListener('change',()=>{
+      if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}
+      const file=input.files?.[0];
+      if(!file){preview.hidden=true;return;}
+      if(file.size>5_000_000){input.value='';preview.hidden=true;error(new Error('Photo must be smaller than 5 MB'));return;}
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)){input.value='';preview.hidden=true;error(new Error('Choose a JPG, PNG or WebP photo'));return;}
+      objectUrl=URL.createObjectURL(file);image.src=objectUrl;name.textContent=file.name;
+      preview.hidden=false;
+    });
+    preview.querySelector('.tf-update-photo-remove').addEventListener('click',()=>{
+      input.value='';preview.hidden=true;if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}
+    });
   }
 
   function projectDocuments(p){
