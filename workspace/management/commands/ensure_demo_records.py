@@ -5,6 +5,7 @@ after an instance recreation. Never resets existing client/project/task edits,
 creates login accounts, or touches records outside the demo namespace.
 """
 from datetime import timedelta
+from uuid import uuid5, NAMESPACE_URL
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -78,9 +79,11 @@ class Command(BaseCommand):
                     counts["assignments"] += int(new_assignment)
 
                 for project_index, (title, description) in enumerate(PROJECT_DEFINITIONS):
+                    stable_project_id = uuid5(NAMESPACE_URL, f"techfinitys-demo-project:{code}:{project_index}")
                     project, new_project = Project.objects.get_or_create(
-                        client=client, title="DEMO | " + title,
+                        pk=stable_project_id,
                         defaults={
+                            "client": client, "title": "DEMO | " + title,
                             "description": description + " (Sample data)",
                             "status": "active" if project_index == 0 else "planned",
                             "owner": employee, "progress": 25 if project_index == 0 else 0,
@@ -91,10 +94,12 @@ class Command(BaseCommand):
                     counts["projects"] += int(new_project)
 
                     for task_index, (task_title, status, priority, offset) in enumerate(TASK_DEFINITIONS):
+                        stable_task_id = uuid5(NAMESPACE_URL, f"techfinitys-demo-task:{code}:{project_index}:{task_index}")
                         task, new_task = Task.objects.get_or_create(
-                            client=client, project=project,
-                            title="DEMO | " + task_title,
+                            pk=stable_task_id,
                             defaults={
+                                "client": client, "project": project,
+                                "title": "DEMO | " + task_title,
                                 "description": (
                                     "Sample task for exploring Techfinitys CRM. "
                                     "Edit the status, assignment, or deadline as needed."
