@@ -101,3 +101,38 @@ class TaskSuiteTests(TestCase):
         self.assertFalse(Notification.objects.filter(recipient=self.portal,body__icontains='Super secret').exists())
         self.assertEqual(self.save(self.first,'add_comment',body='Customer review is ready').status_code,201)
         self.assertTrue(Notification.objects.filter(recipient=self.portal,body__icontains='Customer review is ready').exists())
+
+
+    def test_workflow_builder_executes_on_task_status_change(self):
+        from .models import Record
+        self.login(self.manager)
+        rule = {
+            'kind': 'workflows', 'title': 'Production completed',
+            'client': self.alpha.code, 'status': 'Active',
+            'trigger': 'task_status', 'fromStatus': 'any', 'toStatus': 'completed',
+            'actions': [
+                {'type': 'notify_assignee'},
+                {'type': 'set_priority', 'priority': 'high'},
+                {'type': 'create_followup', 'title': 'Send finished work for review'},
+            ],
+        }
+        created = self.client.post('/api/workspace/', json.dumps(rule), content_type='application/json')
+        self.assertEqual(created.status_code, 200, created.content)
+        self.assertEqual(Record.objects.filter(kind='workflows').count(), 1)
+        self.login(self.worker)
+        change = self.client.post('/api/workspace/',
+            json.dumps({'action': 'task_status', 'id': str(self.first.pk), 'status': 'completed'}),
+            content_type='application/json')
+        self.assertEqual(change.status_code, 200, change.content)
+        self.first.refresh_from_db()
+        self.assertEqual(self.first.priority, 'high')
+        self.assertTrue(Notification.objects.filter(recipient=self.worker,title__icontains='Production completed').exists())
+        self.assertTrue(Task.objects.filter(parent=self.first,title='Send finished work for review').exists())
+        # No repeat execution when status remains unchanged.
+        same = self.client.post('/api/workspace/',
+            json.dumps({'action': 'task_status', 'id': str(self.first.pk), 'status': 'completed'}),
+            content_type='application/json')
+        self.assertEqual(same.status_code, 200, same.content)
+        self.assertEqual(Task.objects.filter(parent=self.first,title='Send finished work for review').count(), 1)
+        denied = self.client.post('/api/workspace/', json.dumps(rule), content_type='application/json')
+        self.assertEqual(denied.status_code, 403)
