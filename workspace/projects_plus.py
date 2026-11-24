@@ -220,6 +220,21 @@ def projects_plus_api(request):
                 )
                 _recalculate_project(project.pk)
                 _log(member, 'Created task', task, project.client, title)
+                # Managers' quick-add rows create unassigned tasks. Notify only
+                # active employees assigned to this client, not unrelated staff.
+                recipients = Member.objects.filter(
+                    role='employee', is_active=True, user__is_active=True,
+                    client_assignments__client=project.client,
+                    client_assignments__active=True,
+                ).exclude(pk=member.pk).distinct()
+                Notification.objects.bulk_create([
+                    Notification(
+                        recipient=employee, client=project.client,
+                        title=f'New project task: {title}'[:220],
+                        body=f'{project.title} · Task available for assignment.',
+                        link=f'#projects/{project.pk}/tasks',
+                    ) for employee in recipients
+                ])
                 return JsonResponse({'ok': True, 'id': str(task.pk)}, status=201)
 
             if action == 'set_task_date':
