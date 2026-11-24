@@ -21,6 +21,8 @@ urlpatterns=[
  path('api/projects-plus/',projects_plus.projects_plus_api,name='projects_plus_api'),
  path('api/task-detail/<uuid:task_id>/',task_collab.task_detail_api,name='task_detail_api'),
  path('api/projects-plus/upload/',projects_plus.document_upload,name='project_document_upload'),
+ path('api/projects-plus/feed-photo/upload/',projects_plus.project_feed_photo_upload,name='project_feed_photo_upload'),
+ path('api/projects-plus/feed-photo/<uuid:post_id>/',projects_plus.project_feed_photo,name='project_feed_photo'),
  path('api/projects-plus/document/<uuid:document_id>/',projects_plus.document_download,name='project_document_download'),
  path('api/project-export/<str:kind>/',projects_plus.export_project_csv,name='project_csv'),
  path('',views.dashboard,name='dashboard'),path('login/',views.login_view,name='login'),path('logout/',views.logout_view,name='logout'),
