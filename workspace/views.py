@@ -281,6 +281,19 @@ def workspace_api(request):
     except PermissionError as exc:
         return JsonResponse({'error': str(exc)}, status=401)
 
+    # Lightweight recipient-scoped polling for in-app notification popups.
+    # Avoid loading the entire CRM workspace every time the timer fires.
+    if request.method == 'GET' and request.GET.get('notifications_only') == '1':
+        recent = Notification.objects.filter(recipient=member).order_by('-created_at')[:40]
+        response = JsonResponse({'notifications': [
+            {'id': n.id, 'title': n.title, 'body': n.body,
+             'link': n.link, 'read': bool(n.read_at),
+             'createdAt': n.created_at.isoformat()}
+            for n in recent
+        ]})
+        response['Cache-Control'] = 'private, no-store'
+        return response
+
     client_ids = _client_ids_for(member)
     client_codes = _client_codes_for(member)
 
