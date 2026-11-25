@@ -85,10 +85,10 @@ async function showConnected(){
   portalId=id;await loadPreview();
  });
  c.append(selector);
- c.append(el('div','tf-zoho-preview','Loading projects…')).lastElementChild.id='tfZohoPreview';
+ const preview=el('div','tf-zoho-preview','Loading projects…');preview.id='tfZohoPreview';c.append(preview);
  const footer=el('div','tf-zoho-footer');
  footer.append(button('Disconnect',async()=>{await post(base+'disconnect/',{});connected=false;portals=[];projects=[];drawFrame();connectionView({configured:true});},'secondary'));
- footer.append(button('Import selected projects',importSelected,'primary')).lastElementChild.id='tfZohoImportSelected';
+ const importButton=button('Import selected projects',importSelected,'primary');importButton.id='tfZohoImportSelected';footer.append(importButton);
  c.append(footer);
  portalId=portals[0].id;
  await loadPreview();
