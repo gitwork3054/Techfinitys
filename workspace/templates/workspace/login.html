@@ -1,13 +1,54 @@
 {% load static %}
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){try{var t=localStorage.getItem('techfinitys-theme')||'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();</script><title>Sign in · Techfinitys®</title><link rel="stylesheet" href="{% static 'workspace/app.css' %}"><link rel="stylesheet" href="{% static 'workspace/enterprise.css' %}"><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){try{var t=localStorage.getItem('techfinitys-theme')||'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();</script><title>Sign in · Techfinitys®</title><link rel="stylesheet" href="{% static 'workspace/app.css' %}"><link rel="stylesheet" href="{% static 'workspace/enterprise.css' %}"><link rel="stylesheet" href="{% static 'workspace/login_intro.css' %}?v=20261125-logo-reveal-v1">
+<script>
+/* Prevent an intro flash when reduced motion is preferred or login has errors. */
+(function(){
+  try{
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    {% if not error and not google_error %}
+    document.documentElement.classList.add('tf-intro-active');
+    {% endif %}
+  }catch(e){}
+})();
+</script><style>
 .tf-oauth-divider{display:flex;align-items:center;gap:12px;margin:15px 0;color:var(--muted);font-size:12px}.tf-oauth-divider:before,.tf-oauth-divider:after{content:"";height:1px;background:var(--border);flex:1}
 .tf-google-login{min-height:45px;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;text-align:center;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text)!important;text-decoration:none;font-weight:750;font-size:13px;transition:.2s ease}
 .tf-google-login:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--text)!important}.tf-google-g{font-family:Arial,sans-serif;font-size:21px;font-weight:800;background:conic-gradient(#4285f4 0 30%,#34a853 30% 55%,#fbbc05 55% 73%,#ea4335 73% 100%);background-clip:text;-webkit-background-clip:text;color:transparent}
 .tf-google-disabled{cursor:not-allowed;opacity:.65;font-size:11px}.tf-google-disabled:hover{background:var(--panel);border-color:var(--border)}.tf-oauth-error{font-size:12px;color:#db5462!important;line-height:1.5}
 </style></head>
-<body class="login-page"><button class="theme-toggle login-theme-toggle" id="loginThemeToggle" type="button" aria-label="Switch theme"><span class="theme-icon">◐</span><span id="loginThemeLabel">Dark</span></button><form method="post" class="login-card">{% csrf_token %}<img src="{% static 'images/techfinitys-logo.png' %}" alt="Techfinitys"><h1>Sign in to your workspace</h1><p>Your work, clients, and projects — connected in one secure place.</p>{% if error %}<div class="notice">{{ error }}</div>{% endif %}<label>Username<input name="username" required autofocus></label><label>Password<input name="password" type="password" required></label><button class="primary" type="submit">Sign in</button>
+<body class="login-page">
+<div id="tfLoginIntro" class="tf-login-intro" aria-label="Techfinitys introduction" hidden>
+  <button type="button" class="tf-intro-skip" id="tfIntroSkip">Skip intro</button>
+  <div class="tf-intro-stage" aria-hidden="true">
+    <div class="tf-intro-emblem"><img src="{% static 'images/techfinitys-logo.png' %}" alt=""></div>
+    <h2 class="tf-intro-name">techfinitys<sup>®</sup></h2>
+    <p class="tf-intro-sub">One workspace. Infinite possibilities.</p>
+    <div class="tf-intro-progress"><span></span></div>
+  </div>
+</div>
+<button class="theme-toggle login-theme-toggle" id="loginThemeToggle" type="button" aria-label="Switch theme"><span class="theme-icon">◐</span><span id="loginThemeLabel">Dark</span></button><form method="post" class="login-card">{% csrf_token %}<img src="{% static 'images/techfinitys-logo.png' %}" alt="Techfinitys"><h1>Sign in to your workspace</h1><p>Your work, clients, and projects — connected in one secure place.</p>{% if error %}<div class="notice">{{ error }}</div>{% endif %}<label>Username<input name="username" required autofocus></label><label>Password<input name="password" type="password" required></label><button class="primary" type="submit">Sign in</button>
   <div class="tf-oauth-divider"><span>or</span></div>
   {% if google_enabled %}<a class="tf-google-login" href="{% url 'google_start' %}"><span class="tf-google-g" aria-hidden="true">G</span>Continue with Google</a>
   {% else %}<div class="tf-google-login tf-google-disabled" aria-disabled="true"><span class="tf-google-g" aria-hidden="true">G</span>Google sign-in · Admin setup required</div>{% endif %}
   {% if google_error %}<p class="tf-oauth-error">{% if google_error == 'uninvited' %}No matching active CRM account was found. Ask your administrator to invite this Google email.{% elif google_error == 'cancelled' %}Google sign-in was cancelled.{% elif google_error == 'unconfigured' %}Google sign-in is not configured yet.{% elif google_error == 'mismatch' %}This account is linked to a different Google identity. Contact your administrator.{% else %}Google sign-in could not be completed. Please try again.{% endif %}</p>{% endif %}
-  <small>Google sign-in is available only to existing CRM users with a verified matching email.<br>Need access? Contact your workspace administrator.</small></form><script>(function(){var b=document.getElementById('loginThemeToggle'),l=document.getElementById('loginThemeLabel');function sync(){var t=document.documentElement.dataset.theme||'light';if(l)l.textContent=t==='dark'?'Dark':'Light';if(b)b.setAttribute('aria-pressed',String(t==='dark'));}if(b)b.addEventListener('click',function(){var n=(document.documentElement.dataset.theme||'light')==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('techfinitys-theme',n);}catch(e){}sync();});sync();})();</script></body></html>
+  <small>Google sign-in is available only to existing CRM users with a verified matching email.<br>Need access? Contact your workspace administrator.</small></form><script>(function(){var b=document.getElementById('loginThemeToggle'),l=document.getElementById('loginThemeLabel');function sync(){var t=document.documentElement.dataset.theme||'light';if(l)l.textContent=t==='dark'?'Dark':'Light';if(b)b.setAttribute('aria-pressed',String(t==='dark'));}if(b)b.addEventListener('click',function(){var n=(document.documentElement.dataset.theme||'light')==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('techfinitys-theme',n);}catch(e){}sync();});sync();})();</script>
+<script>
+(function(){
+  var root=document.documentElement;
+  var overlay=document.getElementById('tfLoginIntro');
+  if(!root.classList.contains('tf-intro-active')||!overlay)return;
+  overlay.hidden=false;
+  var finished=false;
+  function finish(){
+    if(finished)return;
+    finished=true;
+    root.classList.remove('tf-intro-active');
+    root.classList.add('tf-intro-complete');
+    window.setTimeout(function(){overlay.hidden=true;},650);
+  }
+  document.getElementById('tfIntroSkip').addEventListener('click',finish);
+  window.setTimeout(finish,2250);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')finish();});
+  window.addEventListener('pagehide',finish,{once:true});
+})();
+</script></body></html>
