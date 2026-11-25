@@ -497,3 +497,4 @@ from .billing_models import BillingProfile, InvoiceSequence, BillingSchedule, In
 # Task-detail conversations and checklist workflow (additive).
 from .task_collab_models import TaskComment, TaskChecklistItem  # noqa: E402,F401
 from .push_models import PushSubscription  # noqa: E402,F401
+from .zoho_import_models import ZohoProjectLink  # noqa: E402,F401
