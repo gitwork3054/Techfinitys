@@ -113,3 +113,131 @@ html[data-reduce-motion='yes'] *,html[data-reduce-motion='yes'] *::before,html[d
 
 
 .tf-desktop-permission-help{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin:2px 0 12px;max-width:660px}
+
+
+/* Personal panel appearance v2. Stronger than the legacy Aurora overrides:
+   only backgrounds/borders/shadows change; no sizing or layout modifications. */
+html[data-theme][data-panel] {
+ --tf-panels-light:rgba(255,255,255,.70);
+ --tf-panels-dark:rgba(22,34,68,.72);
+}
+html[data-theme='light'][data-panel='aurora'] .shell {
+ background:
+ radial-gradient(ellipse at 18% 22%,rgba(65,209,255,.63),transparent 42%),
+ radial-gradient(ellipse at 82% 22%,rgba(255,118,192,.53),transparent 42%),
+ radial-gradient(ellipse at 55% 82%,rgba(157,137,249,.45),transparent 54%),
+ linear-gradient(120deg,#ddf5ff,#ebdfff 61%,#ffdfed)!important;
+}
+html[data-theme='dark'][data-panel='aurora'] .shell {
+ background:
+ radial-gradient(ellipse at 13% 20%,rgba(15,167,241,.44),transparent 45%),
+ radial-gradient(ellipse at 83% 19%,rgba(216,69,194,.40),transparent 46%),
+ radial-gradient(ellipse at 52% 84%,rgba(108,69,223,.37),transparent 53%),
+ linear-gradient(120deg,#081a36,#231b48 68%,#241734)!important;
+}
+html[data-theme][data-panel='aurora'] .main>.tf-aurora-ribbons{display:block!important;visibility:visible!important}
+html[data-theme='light'][data-panel='glass'] .shell {
+ background:linear-gradient(135deg,#dbeafa 0%,#e5e2f7 50%,#f6e4f4 100%)!important;
+}
+html[data-theme='dark'][data-panel='glass'] .shell {
+ background:linear-gradient(135deg,#0a2237 0%,#17233f 55%,#29233d 100%)!important;
+}
+html[data-theme][data-panel='glass'] .main>.tf-aurora-ribbons{display:none!important}
+html[data-theme='light'][data-panel='solid'] .shell{background:#e6edf7!important}
+html[data-theme='dark'][data-panel='solid'] .shell{background:#10192c!important}
+html[data-theme][data-panel='solid'] .main>.tf-aurora-ribbons{display:none!important}
+html[data-theme='light'][data-panel='minimal'] .shell{background:#f5f7fb!important}
+html[data-theme='dark'][data-panel='minimal'] .shell{background:#10131e!important}
+html[data-theme][data-panel='minimal'] .main>.tf-aurora-ribbons{display:none!important}
+html[data-theme][data-panel='minimal'] .main::before,
+html[data-theme][data-panel='minimal'] .main::after{display:none!important;content:none!important}
+
+/* Match all CRM panel families, not only .tf-pane and .tf-widget.
+   Keep distinct surface treatments in Light and Dark modes. */
+html[data-theme][data-panel] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ transition:background-color .17s ease,border-color .17s ease,box-shadow .17s ease;
+}
+html[data-theme='light'][data-panel='glass'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:rgba(255,255,255,.38)!important;
+ border-color:rgba(255,255,255,.75)!important;
+ box-shadow:0 8px 25px rgba(57,89,151,.11),inset 0 1px 0 rgba(255,255,255,.68)!important;
+ backdrop-filter:blur(26px) saturate(130%)!important;
+ -webkit-backdrop-filter:blur(26px) saturate(130%)!important;
+}
+html[data-theme='dark'][data-panel='glass'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:rgba(27,39,75,.43)!important;
+ border-color:rgba(149,185,249,.32)!important;
+ box-shadow:0 10px 28px rgba(0,0,0,.16),inset 0 1px rgba(206,222,255,.14)!important;
+ backdrop-filter:blur(27px) saturate(130%)!important;
+ -webkit-backdrop-filter:blur(27px) saturate(130%)!important;
+}
+html[data-theme='light'][data-panel='solid'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:#fff!important;border-color:#d7e0ed!important;
+ box-shadow:0 3px 12px rgba(31,48,80,.10)!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html[data-theme='dark'][data-panel='solid'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:#202e4a!important;border-color:#3c5275!important;
+ box-shadow:0 3px 12px rgba(0,0,0,.15)!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html[data-theme='light'][data-panel='minimal'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:#fff!important;border-color:#e2e8f0!important;
+ border-radius:9px!important;box-shadow:none!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html[data-theme='dark'][data-panel='minimal'] main#mainContent :is(
+ .tf-pane,.tf-widget,.tf-home-task-register,.tf-metric,.record-card,
+ .os-pane,.os-number-card,.os-welcome,.panel,.stat,.record,.creative,
+ .person,.task-card,.lane,.dash-tile,.tf-kanban-lane,.tf-kanban-card,
+ .tf-phase-card,.tf-user-card,.tf-client-register,.tf-project-hero,
+ .tf-dashboard-widget,.tf-toolbar,.tf-task-toolbar,.tf-prefs-page
+){
+ background:#1a2233!important;border-color:#343f51!important;
+ border-radius:9px!important;box-shadow:none!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+/* The translucent treatment also applies to the main dashboard widget
+   container, while its table cells retain readable contrast. */
+html[data-theme='light'][data-panel='glass'] main#mainContent :is(
+ .tf-grid tbody td,.tf-home-task-row,.tf-task-table td
+){background:rgba(255,255,255,.12)!important}
+html[data-theme='dark'][data-panel='glass'] main#mainContent :is(
+ .tf-grid tbody td,.tf-home-task-row,.tf-task-table td
+){background:rgba(16,27,55,.15)!important}
