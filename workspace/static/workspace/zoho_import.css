@@ -1,0 +1,32 @@
+/* Direct Zoho Projects import panel: independent of all CRM page workflows. */
+.tf-zoho-modal[hidden]{display:none!important}
+.tf-zoho-modal{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:20px;background:rgba(7,15,35,.64);backdrop-filter:blur(9px)}
+.tf-zoho-panel{width:min(670px,100%);max-height:min(780px,90vh);overflow:auto;background:var(--panel,#fff);color:var(--text,#162344);border:1px solid var(--border,#e1e7f2);border-radius:19px;padding:26px;box-shadow:0 25px 75px rgba(0,0,0,.24)}
+.tf-zoho-header{display:flex;justify-content:space-between;gap:15px;align-items:start}
+.tf-zoho-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--accent,#596dde)}
+.tf-zoho-header h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif;margin:7px 0 10px;font-size:24px;letter-spacing:-.04em}
+.tf-zoho-close{border:0!important;background:transparent!important;color:var(--text)!important;font-size:27px!important;min-width:35px;min-height:35px;cursor:pointer}
+.tf-zoho-intro{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 16px}
+.tf-zoho-message{color:var(--accent);font-size:12px;font-weight:650;min-height:18px;margin:5px 0}
+.tf-zoho-content{display:grid;gap:15px}
+.tf-zoho-field{display:grid;gap:8px;font-size:12px;font-weight:750;color:var(--text)}
+.tf-zoho-field select{padding:10px 12px;background:var(--field,var(--panel));border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%}
+.tf-zoho-btn{border-radius:11px;padding:10px 15px;min-height:38px;cursor:pointer;font-weight:750;font-size:12px;border:1px solid var(--border);background:var(--raised);color:var(--text)}
+.tf-zoho-btn.primary{background:var(--accent)!important;color:white!important;border-color:var(--accent)!important}
+.tf-zoho-btn.secondary{background:transparent;color:var(--muted)}
+.tf-zoho-btn:focus-visible,.tf-zoho-field select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tf-zoho-warning{border:1px solid rgba(217,155,60,.4);border-radius:10px;padding:12px;background:rgba(245,191,90,.11);font-size:13px;color:var(--text);line-height:1.5;margin:0}
+.tf-zoho-hint{font-size:12px;line-height:1.6;color:var(--muted)}
+.tf-zoho-code{font-size:11px;word-break:break-word;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--raised);color:var(--text)}
+.tf-zoho-preview{border:1px solid var(--border);border-radius:12px;min-width:0;overflow:hidden}
+.tf-zoho-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--raised);font-size:12px;font-weight:700}
+.tf-zoho-list{max-height:315px;overflow:auto}
+.tf-zoho-item{display:flex;align-items:center;gap:13px;padding:10px 13px;border-top:1px solid var(--border);cursor:pointer}
+.tf-zoho-item:hover{background:var(--accent-soft)}
+.tf-zoho-item input{accent-color:var(--accent);width:17px;height:17px;flex:none}
+.tf-zoho-item.is-imported{opacity:.65;cursor:default}
+.tf-zoho-item-text{display:grid;gap:4px;min-width:0}
+.tf-zoho-item-text strong{font-size:12px;overflow-wrap:anywhere;color:var(--text)}
+.tf-zoho-item-text small{font-size:10px;color:var(--muted)}
+.tf-zoho-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:10px}
+@media(max-width:600px){.tf-zoho-panel{padding:18px}.tf-zoho-summary{flex-wrap:wrap}}
