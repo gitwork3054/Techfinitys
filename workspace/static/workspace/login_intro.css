@@ -1,0 +1,108 @@
+/* Techfinitys pre-login identity reveal. Decorates login only, without
+   affecting authentication, validation, navigation or dashboard routes. */
+.tf-login-intro{
+ position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+ isolation:isolate;overflow:hidden;visibility:visible;opacity:1;
+ background:#080e23;color:#f7f9ff;
+ transition:opacity .6s cubic-bezier(.2,.7,.3,1),visibility .6s;
+}
+.tf-login-intro::before{
+ content:"";position:absolute;inset:-30%;
+ background:
+  radial-gradient(ellipse 37% 37% at 25% 43%,rgba(16,218,213,.27),transparent 72%),
+  radial-gradient(ellipse 38% 40% at 79% 45%,rgba(127,104,247,.32),transparent 70%),
+  radial-gradient(ellipse 34% 37% at 57% 85%,rgba(250,119,168,.19),transparent 77%);
+ animation:tf-intro-ambient 5s ease-in-out infinite alternate;pointer-events:none;
+}
+.tf-login-intro::after{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(120deg,transparent 18%,rgba(255,255,255,.035) 42%,transparent 68%);
+ opacity:.6;
+}
+.tf-intro-stage{
+ position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+ gap:16px;text-align:center;padding:24px;
+}
+.tf-intro-emblem{
+ position:relative;width:116px;height:116px;display:grid;place-items:center;
+ border-radius:32px;
+ background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.025));
+ border:1px solid rgba(204,220,255,.25);
+ box-shadow:0 16px 57px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.13);
+ backdrop-filter:blur(16px);
+ opacity:0;transform:translateY(18px) scale(.84);
+ animation:tf-intro-emblem-in .72s cubic-bezier(.18,1,.28,1) .12s forwards;
+}
+.tf-intro-emblem::before{
+ content:"";position:absolute;inset:-9px;border-radius:40px;pointer-events:none;
+ border:1px solid rgba(128,200,246,.24);box-shadow:0 0 34px rgba(94,136,247,.16);
+ animation:tf-intro-halo 1.7s ease-in-out .25s infinite alternate;
+}
+.tf-intro-emblem img{width:76px;height:76px;object-fit:contain;filter:drop-shadow(0 3px 12px rgba(255,255,255,.13))}
+.tf-intro-name{
+ margin:9px 0 0;font-family:'Plus Jakarta Sans','DM Sans',system-ui,sans-serif;
+ font-size:clamp(29px,5vw,42px);font-weight:800;letter-spacing:-.065em;
+ line-height:1.1;color:#f7f9ff;opacity:0;transform:translateY(13px);
+ animation:tf-intro-word-in .55s ease-out .53s forwards;
+}
+.tf-intro-name sup{font-size:10px;letter-spacing:0;vertical-align:top;margin-left:3px}
+.tf-intro-sub{
+ margin:0;color:#afc5e6;font-size:11px;font-weight:700;letter-spacing:.24em;
+ text-transform:uppercase;opacity:0;transform:translateY(8px);
+ animation:tf-intro-word-in .5s ease-out .76s forwards;
+}
+.tf-intro-progress{
+ width:162px;height:2px;border-radius:5px;overflow:hidden;
+ background:rgba(203,219,255,.16);margin-top:13px;
+ opacity:0;animation:tf-intro-word-in .4s ease .67s forwards;
+}
+.tf-intro-progress span{
+ display:block;width:100%;height:100%;transform-origin:left;transform:scaleX(0);
+ background:linear-gradient(90deg,#53e0d0,#9ba5ff,#ffa2d0);
+ animation:tf-intro-load 1.4s cubic-bezier(.32,.55,.29,1) .62s forwards;
+}
+.tf-intro-skip{
+ position:absolute;z-index:2;right:24px;top:22px;padding:8px 14px!important;
+ background:rgba(255,255,255,.075)!important;color:#d7e5fc!important;
+ border:1px solid rgba(217,230,255,.20)!important;
+ border-radius:999px!important;font-size:12px!important;cursor:pointer;
+}
+.tf-intro-skip:hover,.tf-intro-skip:focus-visible{
+ background:rgba(255,255,255,.16)!important;color:#fff!important;
+}
+html.tf-intro-active body.login-page .login-card,
+html.tf-intro-active body.login-page .login-theme-toggle{
+ opacity:0;pointer-events:none;
+}
+html.tf-intro-complete .tf-login-intro{
+ opacity:0;visibility:hidden;pointer-events:none;
+}
+html.tf-intro-complete body.login-page .login-card{
+ animation:tf-login-arrive .7s cubic-bezier(.2,.7,.2,1) both;
+}
+html.tf-intro-complete body.login-page .login-theme-toggle{
+ animation:tf-login-arrive .5s ease-out both;
+}
+@keyframes tf-intro-ambient{
+ from{transform:translate3d(-2%,1%,0) scale(1)}
+ to{transform:translate3d(2%,-1%,0) scale(1.035)}
+}
+@keyframes tf-intro-emblem-in{
+ to{transform:translateY(0) scale(1);opacity:1}
+}
+@keyframes tf-intro-halo{
+ to{box-shadow:0 0 46px rgba(107,159,255,.39);border-color:rgba(128,200,246,.52)}
+}
+@keyframes tf-intro-word-in{to{opacity:1;transform:translateY(0)}}
+@keyframes tf-intro-load{to{transform:scaleX(1)}}
+@keyframes tf-login-arrive{
+ from{opacity:0;transform:translateY(14px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+ .tf-login-intro{display:none!important}
+ html.tf-intro-active body.login-page .login-card,
+ html.tf-intro-active body.login-page .login-theme-toggle{opacity:1!important;pointer-events:auto!important}
+ html.tf-intro-complete body.login-page .login-card,
+ html.tf-intro-complete body.login-page .login-theme-toggle{animation:none!important}
+}
