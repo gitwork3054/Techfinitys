@@ -1,6 +1,14 @@
 from django.urls import path
-from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center, task_collab, push_notifications
+from . import views, operations, projects_plus, collaboration, google_signin, billing, activity_center, task_collab, push_notifications, zoho_import
 urlpatterns=[
+ path('api/zoho/status/', zoho_import.status, name='zoho_import_status'),
+ path('api/zoho/connect/', zoho_import.connect, name='zoho_import_connect'),
+ path('api/zoho/callback/', zoho_import.callback, name='zoho_import_callback'),
+ path('api/zoho/portals/', zoho_import.portals, name='zoho_import_portals'),
+ path('api/zoho/preview/', zoho_import.preview, name='zoho_import_preview'),
+ path('api/zoho/import/', zoho_import.import_projects, name='zoho_import_projects'),
+ path('api/zoho/disconnect/', zoho_import.disconnect, name='zoho_import_disconnect'),
+
  path('sw.js',push_notifications.service_worker,name='push_worker'),
  path('api/push/config/',push_notifications.push_config,name='push_config'),
  path('api/push/subscription/',push_notifications.push_subscription,name='push_subscription'),
