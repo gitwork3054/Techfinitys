@@ -1,0 +1,123 @@
+/* CRM card rhythm & selective colour, inspired by the provided Zoho dashboard.
+   Only presentation: no routes, bindings, buttons, data or task workflow touched. */
+:root{
+  --tf-card-gap:16px;
+  --tf-card-radius:17px;
+}
+html[data-theme] main#mainContent .tf-widgets{
+  gap:18px!important;
+  row-gap:20px!important;
+}
+html[data-theme] main#mainContent .tf-metric-grid{
+  gap:14px!important;
+  padding:14px!important;
+  align-items:stretch!important;
+}
+html[data-theme] main#mainContent .tf-metric-grid>.tf-metric{
+  min-width:0;
+  padding:21px 17px!important;
+  border:1px solid var(--tf-v-line,var(--border))!important;
+  border-radius:var(--tf-card-radius)!important;
+  background:var(--panel)!important;
+  box-shadow:0 5px 16px rgba(49,66,119,.075)!important;
+  text-align:center;
+  align-items:center;
+  justify-content:center;
+}
+html[data-theme='dark'] main#mainContent .tf-metric-grid>.tf-metric{
+  background:rgba(36,48,86,.76)!important;
+}
+html[data-theme] main#mainContent .tf-metric-grid>.tf-metric+.tf-metric{
+  border-left:1px solid var(--tf-v-line,var(--border))!important;
+}
+html[data-theme] main#mainContent .tf-metric-grid>.tf-metric:hover{
+  box-shadow:0 12px 28px rgba(71,86,146,.15)!important;
+}
+/* Avoid breaking saved Glass/Minimal styles. */
+html[data-panel='glass'] main#mainContent .tf-metric-grid>.tf-metric{
+  background:var(--glass-surface)!important;
+  backdrop-filter:blur(22px)!important;
+  -webkit-backdrop-filter:blur(22px)!important;
+}
+html[data-panel='minimal'] main#mainContent .tf-metric-grid>.tf-metric{
+  box-shadow:none!important;
+}
+
+/* Metric values retain strong contrast, with a tasteful accent per card. */
+html main#mainContent .tf-metric-grid>.tf-metric strong{
+  font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;
+  font-weight:800!important;
+  letter-spacing:-.055em!important;
+  color:var(--tf-v-ink,var(--text))!important;
+}
+html main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n+1) strong{color:#4f78db!important}
+html main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n+2) strong{color:#8b62d5!important}
+html main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n) strong{color:#189d8e!important}
+html[data-theme='dark'] main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n+1) strong{color:#96baff!important}
+html[data-theme='dark'] main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n+2) strong{color:#d0aeff!important}
+html[data-theme='dark'] main#mainContent .tf-metric-grid>.tf-metric:nth-child(3n) strong{color:#67dfc7!important}
+
+/* Shared summary widgets and task lists: distinct cards with breathing room. */
+html[data-theme] main#mainContent :is(.tf-widget,.os-pane,.os-number-card,.tf-home-task-register,.dash-tile){
+  border-radius:var(--tf-card-radius)!important;
+  border-color:var(--tf-v-line,var(--border))!important;
+}
+html[data-theme] main#mainContent .os-numbers{gap:16px!important;margin-bottom:24px!important}
+html[data-theme] main#mainContent .os-columns{gap:20px!important;margin-bottom:22px!important}
+html[data-theme] main#mainContent .os-number-card{
+  box-shadow:0 8px 24px rgba(56,74,129,.10)!important;
+}
+html[data-theme] main#mainContent .os-number-card:nth-child(4n+1){
+  border-top:3px solid #4fa8ee!important;
+}
+html[data-theme] main#mainContent .os-number-card:nth-child(4n+2){
+  border-top:3px solid #9b84e9!important;
+}
+html[data-theme] main#mainContent .os-number-card:nth-child(4n+3){
+  border-top:3px solid #42baa7!important;
+}
+html[data-theme] main#mainContent .os-number-card:nth-child(4n){
+  border-top:3px solid #eda782!important;
+}
+html[data-theme] main#mainContent .tf-widgets>.tf-widget,
+html[data-theme] main#mainContent .os-columns>.os-pane{
+  min-width:0;
+}
+html[data-theme] main#mainContent .tf-widget-header{
+  padding-top:16px!important;
+  padding-bottom:15px!important;
+}
+html[data-theme] main#mainContent .tf-widget-header strong,
+html[data-theme] main#mainContent .os-pane-header .os-label{
+  color:var(--tf-v-ink,var(--text))!important;
+  font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;
+  font-weight:800!important;
+}
+
+/* Colour is informative, not everywhere: dates and priority indicators. */
+html[data-theme='light'] main#mainContent :is(.tf-compact-row time,.tf-home-task-row time){
+  color:#23876a!important;
+  font-weight:750!important;
+}
+html[data-theme='dark'] main#mainContent :is(.tf-compact-row time,.tf-home-task-row time){
+  color:#83dfb8!important;
+  font-weight:750!important;
+}
+html main#mainContent :is(.tf-widget-header,.os-pane-header) a,
+html main#mainContent :is(.tf-widget-header,.os-pane-header) .os-text-btn{
+  color:var(--accent)!important;
+}
+
+/* Responsive gaps: prevent metric overflow on smaller viewports. */
+@media(max-width:1250px){
+ html[data-theme] main#mainContent .tf-metric-grid{
+   grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ }
+}
+@media(max-width:750px){
+ html[data-theme] main#mainContent .tf-widgets,
+ html[data-theme] main#mainContent .os-columns{gap:13px!important}
+ html[data-theme] main#mainContent .tf-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:10px!important}
+ html[data-theme] main#mainContent .tf-metric-grid>.tf-metric{padding:17px 10px!important;min-height:116px!important}
+ html[data-theme] main#mainContent .os-numbers{gap:10px!important}
+}
