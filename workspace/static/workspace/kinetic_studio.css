@@ -1,0 +1,263 @@
+/* Techfinitys / Kinetic Studio 2026
+   Visual-only enhancement: no DOM changes, event handlers, workflow changes,
+   position/layout overrides on the CRM shell, or role-dependent behavior. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* A new editorial colour language: ink, periwinkle, fresh aqua, soft peach.
+   The six user-selected accent colours remain usable. */
+html[data-theme='light']{
+  --tf-v-ink:#1e2440;
+  --tf-v-quiet:#65728b;
+  --tf-v-line:rgba(87,109,149,.19);
+  --tf-v-mint:#39d0bd;
+  --tf-v-coral:#ff927a;
+  --tf-v-aura:#9789f0;
+}
+html[data-theme='dark']{
+  --tf-v-ink:#f2f4ff;
+  --tf-v-quiet:#b8c6df;
+  --tf-v-line:rgba(166,187,235,.24);
+  --tf-v-mint:#5de3d5;
+  --tf-v-coral:#fca58c;
+  --tf-v-aura:#a798ff;
+}
+html body{
+  font-family:'DM Sans',sans-serif!important;
+  font-feature-settings:'ss01' on;
+}
+html main#mainContent :is(h1,h2,h3),
+html .tf-prefs-heading h1,
+html .topbar strong{
+  font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;
+  letter-spacing:-.047em!important;
+}
+html main#mainContent :is(.heading h1,.tf-header h1,.os-page-title,.tf-dashboard-header h1){
+  font-size:clamp(25px,2.15vw,36px)!important;
+  font-weight:800!important;
+  line-height:1.18!important;
+  color:var(--tf-v-ink)!important;
+  text-wrap:balance;
+}
+html main#mainContent :is(.heading p,.tf-header p,.tf-dashboard-header p){
+  font-size:13px!important;
+  line-height:1.6!important;
+  color:var(--tf-v-quiet)!important;
+}
+html main#mainContent :is(.eyebrow,.os-overline,.tf-overline){
+  color:var(--accent)!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  letter-spacing:.12em!important;
+}
+
+/* Signature illuminated aurora, clearly differentiated from earlier
+   static blue/pink gradients. Reuses the existing non-interactive layer. */
+html[data-theme='light'][data-panel='aurora'] .shell{
+ background:
+ radial-gradient(ellipse 38% 45% at 9% 22%,rgba(64,211,220,.53),transparent 100%),
+ radial-gradient(ellipse 38% 47% at 83% 14%,rgba(169,135,241,.47),transparent 100%),
+ radial-gradient(ellipse 49% 48% at 74% 80%,rgba(255,161,124,.43),transparent 100%),
+ radial-gradient(ellipse 42% 52% at 28% 91%,rgba(103,142,245,.28),transparent 100%),
+ linear-gradient(135deg,#ebfff9 0%,#f1f1ff 46%,#fff0e7 100%)!important;
+ background-attachment:fixed!important;
+}
+html[data-theme='dark'][data-panel='aurora'] .shell{
+ background:
+ radial-gradient(ellipse 44% 48% at 7% 20%,rgba(0,177,185,.34),transparent 100%),
+ radial-gradient(ellipse 38% 46% at 89% 17%,rgba(117,75,234,.40),transparent 100%),
+ radial-gradient(ellipse 50% 50% at 84% 84%,rgba(219,87,115,.25),transparent 100%),
+ radial-gradient(ellipse 40% 48% at 30% 94%,rgba(48,100,195,.24),transparent 100%),
+ linear-gradient(135deg,#081f2d 0%,#17183b 51%,#251832 100%)!important;
+ background-attachment:fixed!important;
+}
+html[data-theme][data-panel='aurora'] .main>.tf-aurora-ribbons{
+ background-image:
+  url('/static/workspace/aurora_light_trails.svg'),
+  radial-gradient(ellipse 42% 20% at 22% 18%,rgba(55,232,224,.23),transparent 90%),
+  radial-gradient(ellipse 42% 23% at 84% 28%,rgba(249,123,211,.22),transparent 90%)!important;
+ background-size:100% 100%,110% 100%,110% 100%!important;
+ background-repeat:no-repeat!important;
+ opacity:.75!important;
+ filter:saturate(130%);
+ animation:tf-kinetic-wave 15s ease-in-out infinite alternate!important;
+ transform-origin:50% 17%;
+}
+html[data-theme='dark'][data-panel='aurora'] .main>.tf-aurora-ribbons{
+ opacity:.83!important;filter:saturate(160%);
+}
+@keyframes tf-kinetic-wave{
+ 0%{opacity:.54;filter:hue-rotate(-9deg) saturate(115%) brightness(.95);transform:translate3d(0,0,0) scale(1)}
+ 50%{opacity:.8;filter:hue-rotate(8deg) saturate(140%) brightness(1.08);transform:translate3d(0,5px,0) scale(1.008)}
+ 100%{opacity:.7;filter:hue-rotate(-4deg) saturate(120%) brightness(1);transform:translate3d(0,0,0) scale(1.004)}
+}
+/* Aurora is a backdrop, never a foreground overlay. */
+html[data-theme][data-panel='aurora'] .main>.tf-aurora-ribbons{pointer-events:none!important}
+html[data-theme][data-panel='solid'] .main>.tf-aurora-ribbons,
+html[data-theme][data-panel='glass'] .main>.tf-aurora-ribbons,
+html[data-theme][data-panel='minimal'] .main>.tf-aurora-ribbons{display:none!important;animation:none!important}
+
+/* Navigation: intentionally understated surfaces and a luminous active rail. */
+html[data-theme] .sidebar nav button.active{
+  border-radius:11px!important;
+  box-shadow:0 6px 22px color-mix(in srgb,var(--accent) 23%,transparent),
+             inset 0 1px rgba(255,255,255,.24)!important;
+  background:linear-gradient(110deg,var(--accent),
+     color-mix(in srgb,var(--accent) 72%,#5861bb))!important;
+}
+html[data-theme='dark'] .sidebar nav button.active{
+  background:linear-gradient(110deg,#5669bd,#7369ba)!important;
+}
+html[data-theme] .sidebar nav button:not(.active):hover{
+  transform:translateX(2px);
+  border-radius:11px!important;
+}
+html[data-theme] .sidebar .brand span{
+  font-weight:800!important;
+  letter-spacing:-.07em!important;
+}
+html[data-theme] .sidebar .workspace{
+  border-radius:16px!important;
+}
+html[data-theme] .topbar{
+  backdrop-filter:blur(21px) saturate(140%);
+  -webkit-backdrop-filter:blur(21px) saturate(140%);
+}
+html[data-theme='light'] .topbar{background:rgba(254,255,255,.82)!important}
+html[data-theme='dark'] .topbar{background:rgba(11,18,39,.82)!important}
+
+/* Elevated editorial cards, across Dashboard, Projects, CRM and Sales Pipeline.
+   Deliberately exclude Settings buttons and nested table rows. */
+html[data-theme] main#mainContent :is(
+  .os-pane,.os-number-card,.os-welcome,.tf-widget,.tf-pane,.tf-metric,
+  .dash-tile,.record-card,.tf-home-task-register,.tf-project-hero,
+  .tf-dashboard-widget,.os-lead,.tf-kanban-card,.tf-phase-card,.task-card
+){
+  border-radius:19px!important;
+  border-color:var(--tf-v-line)!important;
+  box-shadow:0 12px 34px rgba(38,51,107,.10),0 2px 7px rgba(38,51,107,.04)!important;
+  transition:box-shadow .25s ease,border-color .25s ease,background-color .25s ease,transform .25s ease!important;
+}
+html[data-theme='dark'] main#mainContent :is(
+  .os-pane,.os-number-card,.os-welcome,.tf-widget,.tf-pane,.tf-metric,
+  .dash-tile,.record-card,.tf-home-task-register,.tf-project-hero,
+  .tf-dashboard-widget,.os-lead,.tf-kanban-card,.tf-phase-card,.task-card
+){
+  box-shadow:0 15px 36px rgba(0,0,0,.24),inset 0 1px rgba(190,208,255,.07)!important;
+}
+html[data-theme] main#mainContent :is(
+ .os-number-card,.dash-tile,.tf-metric,.record-card,.os-lead,.tf-kanban-card,.task-card
+):hover{
+ transform:translateY(-3px);
+ border-color:color-mix(in srgb,var(--accent) 34%,var(--tf-v-line))!important;
+ box-shadow:0 19px 44px rgba(55,72,134,.16),0 0 0 1px color-mix(in srgb,var(--accent) 10%,transparent)!important;
+}
+html[data-theme='dark'] main#mainContent :is(
+ .os-number-card,.dash-tile,.tf-metric,.record-card,.os-lead,.tf-kanban-card,.task-card
+):hover{
+ box-shadow:0 18px 39px rgba(0,0,0,.30),0 0 23px rgba(135,124,240,.13)!important;
+}
+
+/* Sales Pipeline: distinctive columns and identity bands without modifying
+   lane ordering, stage labels, drag behaviour, or widths. */
+html[data-theme] main#mainContent .os-pipeline-lane{
+  border-radius:19px!important;
+  border:1px solid var(--tf-v-line)!important;
+  background:color-mix(in srgb,var(--panel) 75%,transparent)!important;
+  box-shadow:0 12px 27px rgba(46,67,118,.075),inset 0 1px rgba(255,255,255,.18)!important;
+  position:relative;
+  overflow:hidden;
+  backdrop-filter:blur(17px) saturate(120%);
+  -webkit-backdrop-filter:blur(17px) saturate(120%);
+}
+html[data-theme='dark'] main#mainContent .os-pipeline-lane{
+  background:rgba(24,35,65,.74)!important;
+}
+html main#mainContent .os-pipeline-lane::before{
+  content:"";display:block;position:absolute;left:0;right:0;top:0;height:4px;
+  background:linear-gradient(90deg,#73cbd4,#6c83e9);pointer-events:none;
+}
+html main#mainContent .os-pipeline-lane:nth-child(2)::before{background:linear-gradient(90deg,#7ba9eb,#a4a1fd)}
+html main#mainContent .os-pipeline-lane:nth-child(3)::before{background:linear-gradient(90deg,#a39cf6,#d2a0ef)}
+html main#mainContent .os-pipeline-lane:nth-child(4)::before{background:linear-gradient(90deg,#d2a2ef,#f1a6c0)}
+html main#mainContent .os-pipeline-lane:nth-child(5)::before{background:linear-gradient(90deg,#f5a7ac,#f7c38b)}
+html main#mainContent .os-pipeline-lane:nth-child(6)::before{background:linear-gradient(90deg,#6cd0a5,#a0e4ae)}
+html main#mainContent .os-pipeline-lane:nth-child(7)::before{background:linear-gradient(90deg,#c2cbdc,#96a1b5)}
+html main#mainContent .os-pipeline-header{
+  font-family:'Plus Jakarta Sans',sans-serif!important;
+  font-size:10px!important;font-weight:800!important;
+  letter-spacing:.11em!important;
+}
+html main#mainContent .os-lead{border-radius:14px!important}
+html main#mainContent .os-lead-value,
+html main#mainContent :is(.os-number-value,.dash-tile strong,.tf-metric strong){
+  font-family:'Plus Jakarta Sans',sans-serif!important;
+  font-weight:800!important;
+  letter-spacing:-.045em!important;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Cohesive interactions: animated focus and sheen on primaries. */
+html main#mainContent button.primary,
+html .topbar .quick-btn{
+  position:relative;
+  overflow:hidden;
+  border-radius:11px!important;
+}
+html main#mainContent button.primary::after,
+html .topbar .quick-btn::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 25%,rgba(255,255,255,.27) 48%,transparent 70%);
+  transform:translateX(-145%);
+  transition:transform .65s ease!important;
+}
+html main#mainContent button.primary:hover::after,
+html .topbar .quick-btn:hover::after{transform:translateX(145%)}
+html main#mainContent :is(input,textarea,select):focus-visible{
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent)!important;
+}
+
+/* Motion: reveal cards on navigation, not perpetual animated controls.
+   Avoid transforming tables, nav containers or dialogs. */
+@keyframes tf-kinetic-reveal{
+ from{opacity:.55;transform:translate3d(0,10px,0)}
+ to{opacity:1;transform:translate3d(0,0,0)}
+}
+html[data-theme] main#mainContent :is(
+ .os-pane,.os-welcome,.tf-widget,.tf-pane,.tf-metric,.dash-tile,
+ .tf-home-task-register,.record-card,.os-pipeline-lane,.tf-project-hero
+){
+  animation:tf-kinetic-reveal .48s cubic-bezier(.21,.7,.25,1) both;
+}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(2){animation-delay:45ms}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(3){animation-delay:85ms}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(4){animation-delay:125ms}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(5){animation-delay:165ms}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(6){animation-delay:205ms}
+html[data-theme] main#mainContent .os-pipeline-lane:nth-child(7){animation-delay:245ms}
+
+/* Respect user's selected low-effects options and accessibility settings. */
+html[data-panel='minimal'] main#mainContent :is(
+ .os-pane,.os-welcome,.tf-widget,.tf-pane,.tf-metric,.dash-tile,
+ .tf-home-task-register,.record-card,.os-pipeline-lane,.tf-project-hero
+){
+ animation:none!important;box-shadow:none!important;
+}
+html[data-panel='minimal'] main#mainContent :is(
+ .os-number-card,.dash-tile,.tf-metric,.record-card,.os-lead,.tf-kanban-card,.task-card
+):hover{transform:none}
+@media(prefers-reduced-motion:reduce){
+ html .main>.tf-aurora-ribbons,
+ html main#mainContent *,
+ html .sidebar nav button{animation:none!important;transition:none!important;transform:none!important}
+}
+html[data-reduce-motion='yes'] .main>.tf-aurora-ribbons,
+html[data-reduce-motion='yes'] main#mainContent *,
+html[data-reduce-motion='yes'] .sidebar nav button{
+ animation:none!important;transition:none!important;
+}
+@media(max-width:850px){
+ html[data-theme] main#mainContent :is(
+ .os-pane,.os-welcome,.tf-widget,.tf-pane,.tf-metric,.dash-tile,
+ .tf-home-task-register,.record-card,.os-pipeline-lane,.tf-project-hero
+ ){animation-duration:.28s}
+}
