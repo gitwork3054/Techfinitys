@@ -6,6 +6,7 @@
  background:#080e23;color:#f7f9ff;
  transition:opacity .6s cubic-bezier(.2,.7,.3,1),visibility .6s;
 }
+.tf-login-intro[hidden]{display:none!important}
 .tf-login-intro::before{
  content:"";position:absolute;inset:-30%;
  background:
