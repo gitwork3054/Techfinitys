@@ -125,7 +125,7 @@ def _project_row(obj):
     if isinstance(status, dict):
         status = status.get('name') or status.get('type') or ''
     status = str(status).lower().strip()
-    completed = any(term in status for term in ('closed', 'completed', 'finished'))
+    completed = any(term in status for term in ('closed', 'completed', 'finished')) or str(obj.get('is_completed', '')).lower() == 'true'
     hold = any(term in status for term in ('hold', 'paused'))
     state = 'completed' if completed else 'on_hold' if hold else 'active'
     description = obj.get('description') or ''
@@ -135,9 +135,14 @@ def _project_row(obj):
     pid = str(obj.get('id') or '')
     if not re.fullmatch(r'[0-9]{1,64}', pid) or not name:
         return None
+    try:
+        progress = max(0, min(100, int(float(obj.get('percent_complete') or 0))))
+    except (ValueError, TypeError):
+        progress = 0
     return {
         'id': pid, 'name': name, 'description': str(description)[:10000],
-        'status': state, 'start_date': _date(obj.get('start_date')),
+        'status': state, 'progress': progress,
+        'start_date': _date(obj.get('start_date')),
         'due_date': _date(obj.get('end_date') or obj.get('due_date')),
     }
 
@@ -307,6 +312,7 @@ def import_projects(request):
                 project = Project.objects.create(
                     client=client, title=item['name'],
                     description=item['description'], status=item['status'],
+                    progress=item['progress'],
                     start_date=item['start_date'], due_date=item['due_date'],
                     group_name='Imported from Zoho', created_by=member,
                 )
