@@ -1,0 +1,177 @@
+/* Content planner: monthly calendar inspired by Meta Business Suite.
+   Standalone presentation component. All CRM forms and permissions unchanged. */
+html[data-theme] main#mainContent .tf-planner{
+ --plan-line:rgba(108,129,175,.22);
+ --plan-surface:rgba(255,255,255,.90);
+ --plan-muted:#66718c;
+ --plan-ink:#24314d;
+ background:var(--plan-surface)!important;
+ border:1px solid var(--plan-line)!important;
+ border-radius:18px!important;
+ overflow:hidden;
+ box-shadow:0 12px 32px rgba(40,65,128,.12);
+ color:var(--plan-ink);
+}
+html[data-theme='dark'] main#mainContent .tf-planner{
+ --plan-line:rgba(164,186,235,.17);
+ --plan-surface:rgba(22,33,61,.90);
+ --plan-muted:#adbfe0;
+ --plan-ink:#f2f5ff;
+ box-shadow:0 12px 32px rgba(0,0,0,.18);
+}
+html[data-panel='glass'] main#mainContent .tf-planner{
+ --plan-surface:rgba(255,255,255,.43);
+ backdrop-filter:blur(23px) saturate(140%);
+ -webkit-backdrop-filter:blur(23px) saturate(140%);
+}
+html[data-theme='dark'][data-panel='glass'] main#mainContent .tf-planner{
+ --plan-surface:rgba(25,38,71,.50);
+}
+html[data-panel='minimal'] main#mainContent .tf-planner{box-shadow:none!important;border-radius:9px!important}
+html[data-theme] main#mainContent .tf-plan-toolbar{
+ display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+ padding:17px 20px;background:transparent;border-bottom:1px solid var(--plan-line);
+}
+html[data-theme] main#mainContent .tf-plan-navigation,
+html[data-theme] main#mainContent .tf-plan-actions{
+ display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+}
+html[data-theme] main#mainContent .tf-plan-navigation h2{
+ margin:0 0 0 10px;font-family:'Plus Jakarta Sans',sans-serif!important;
+ color:var(--plan-ink);font-size:18px;font-weight:800;letter-spacing:-.045em;
+}
+html[data-theme] main#mainContent .tf-plan-toolbar button{
+ border-radius:9px;background:transparent;color:var(--plan-ink);
+ border:1px solid var(--plan-line);
+ box-shadow:none!important;min-height:35px;padding:7px 11px;
+ font-size:12px;white-space:nowrap;
+}
+html[data-theme] main#mainContent .tf-plan-toolbar .primary{
+ color:white;background:var(--accent)!important;border-color:transparent;
+}
+html[data-theme] main#mainContent .tf-plan-toolbar .tf-plan-arrow{
+ font-size:23px;line-height:1;padding:2px 9px;min-width:33px;
+}
+html[data-theme] main#mainContent .tf-plan-toolbar button:hover{
+ background:var(--accent-soft);border-color:var(--accent);
+}
+html[data-theme] main#mainContent .tf-plan-view{
+ display:flex;background:var(--raised);border-radius:10px;padding:3px;gap:2px;
+ border:1px solid var(--plan-line);
+}
+html[data-theme] main#mainContent .tf-plan-view button{border:0;min-height:30px}
+html[data-theme] main#mainContent .tf-plan-view button.active{
+ background:var(--accent)!important;color:white!important;
+}
+html[data-theme] main#mainContent .tf-plan-legends{
+ display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;
+ padding:10px 20px;color:var(--plan-muted);
+ font-size:11px;border-bottom:1px solid var(--plan-line);
+}
+html[data-theme] main#mainContent .tf-plan-legends span{
+ display:inline-flex;align-items:center;gap:7px;
+}
+html[data-theme] main#mainContent .tf-plan-legends i{
+ display:inline-block;width:9px;height:9px;border-radius:50%;
+ background:var(--accent);
+}
+html[data-theme] main#mainContent .tf-plan-legend-shoot i{background:#da83b5}
+html[data-theme] main#mainContent .tf-plan-legend-meeting i{background:#5b9ce4}
+html[data-theme] main#mainContent .tf-plan-legend-deadline i{background:#edb16e}
+html[data-theme] main#mainContent .tf-plan-legend-review i{background:#8a89df}
+html[data-theme] main#mainContent .tf-plan-legend-reminder i{background:#54baa0}
+html[data-theme] main#mainContent .tf-plan-legend-task i{background:#ca839b}
+html[data-theme] main#mainContent .tf-plan-scroll{overflow-x:auto}
+html[data-theme] main#mainContent .tf-plan-grid{
+ display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:730px;
+}
+html[data-theme] main#mainContent .tf-plan-weekday{
+ padding:12px 8px;text-align:center;color:var(--plan-muted);
+ border-right:1px solid var(--plan-line);border-bottom:1px solid var(--plan-line);
+ font-size:11px;font-weight:800;letter-spacing:.018em;
+ background:color-mix(in srgb,var(--plan-surface) 80%,var(--raised));
+}
+html[data-theme] main#mainContent .tf-plan-weekday:nth-child(7){border-right:0}
+html[data-theme] main#mainContent .tf-plan-day{
+ position:relative;min-width:0;min-height:124px;
+ background:transparent;
+ border-right:1px solid var(--plan-line);border-bottom:1px solid var(--plan-line);
+ padding:7px 6px;transition:background-color .18s ease;
+}
+html[data-theme] main#mainContent .tf-plan-day:nth-child(7n){border-right:0}
+html[data-theme] main#mainContent .tf-plan-day.is-outside{
+ background:color-mix(in srgb,var(--raised) 44%,transparent);
+ color:var(--plan-muted);
+}
+html[data-theme] main#mainContent .tf-plan-day.is-today{
+ background:color-mix(in srgb,var(--accent) 7%,transparent);
+ box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 48%,transparent);
+}
+html[data-theme] main#mainContent .tf-plan-day:hover{
+ background:color-mix(in srgb,var(--accent) 5%,transparent);
+}
+html[data-theme] main#mainContent .tf-plan-day-head{
+ display:flex;align-items:center;justify-content:space-between;
+ padding:0 3px 5px;min-height:26px;
+}
+html[data-theme] main#mainContent .tf-plan-day-number{
+ display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
+ font-size:12px;font-weight:700;
+}
+html[data-theme] main#mainContent .tf-plan-day.is-today .tf-plan-day-number{
+ background:var(--accent);color:#fff;
+}
+html[data-theme] main#mainContent .tf-plan-day .tf-plan-add{
+ opacity:0;border:none!important;border-radius:7px!important;min-height:24px;
+ min-width:24px;padding:0!important;color:var(--plan-ink)!important;
+ background:var(--accent-soft)!important;box-shadow:none!important;font-size:16px;
+}
+html[data-theme] main#mainContent .tf-plan-day:hover .tf-plan-add,
+html[data-theme] main#mainContent .tf-plan-day .tf-plan-add:focus-visible{
+ opacity:1;
+}
+html[data-theme] main#mainContent .tf-plan-events{
+ display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+html[data-theme] main#mainContent .tf-plan-event{
+ display:flex;gap:5px;align-items:center;justify-content:flex-start;
+ width:100%;min-width:0;min-height:25px;padding:5px 6px!important;
+ border:0!important;border-left:3px solid currentColor!important;
+ border-radius:5px!important;background:rgba(90,152,229,.14)!important;
+ color:#346da8!important;box-shadow:none!important;
+ text-align:left;font-size:10px!important;font-weight:650;
+ transition:background .16s ease!important;
+}
+html[data-theme] main#mainContent .tf-plan-event:hover{filter:brightness(.94)}
+html[data-theme] main#mainContent .tf-plan-event:focus-visible{
+ outline:2px solid var(--accent);outline-offset:2px;
+}
+html[data-theme] main#mainContent .tf-plan-event .tf-plan-time{flex:none;font-size:9px;opacity:.82}
+html[data-theme] main#mainContent .tf-plan-event .tf-plan-title{
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+html[data-theme] main#mainContent .tf-plan-shoot{background:rgba(214,119,177,.16)!important;color:#a64d84!important}
+html[data-theme] main#mainContent .tf-plan-review{background:rgba(147,126,225,.16)!important;color:#735abe!important}
+html[data-theme] main#mainContent .tf-plan-deadline{background:rgba(225,165,82,.18)!important;color:#9e6a21!important}
+html[data-theme] main#mainContent .tf-plan-reminder{background:rgba(55,183,152,.16)!important;color:#277e72!important}
+html[data-theme] main#mainContent .tf-plan-task{background:rgba(196,114,149,.16)!important;color:#a34c73!important}
+html[data-theme='dark'] main#mainContent .tf-plan-meeting,
+html[data-theme='dark'] main#mainContent .tf-plan-other{color:#a4ceff!important;background:rgba(70,125,206,.22)!important}
+html[data-theme='dark'] main#mainContent .tf-plan-shoot{color:#ffb5de!important;background:rgba(172,68,123,.26)!important}
+html[data-theme='dark'] main#mainContent .tf-plan-review{color:#d2baff!important;background:rgba(115,90,195,.27)!important}
+html[data-theme='dark'] main#mainContent .tf-plan-deadline{color:#ffd296!important;background:rgba(170,110,37,.26)!important}
+html[data-theme='dark'] main#mainContent .tf-plan-reminder{color:#9ee9d5!important;background:rgba(31,124,109,.27)!important}
+html[data-theme='dark'] main#mainContent .tf-plan-task{color:#ffc0d4!important;background:rgba(162,72,112,.27)!important}
+html[data-theme] main#mainContent .tf-plan-more{
+ display:block;padding:4px 5px;color:var(--plan-muted);font-size:10px;font-weight:700;
+}
+@media(max-width:900px){
+ html[data-theme] main#mainContent .tf-plan-toolbar{padding:12px}
+ html[data-theme] main#mainContent .tf-plan-day{min-height:105px}
+ html[data-theme] main#mainContent .tf-plan-legends{padding:10px 12px}
+ html[data-theme] main#mainContent .tf-plan-day .tf-plan-add{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-theme] main#mainContent .tf-plan-day,
+ html[data-theme] main#mainContent .tf-plan-event{transition:none!important}
+}
