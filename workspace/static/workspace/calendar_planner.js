@@ -94,11 +94,11 @@ function render(state){
   const body=items.slice(0,max).map(entry=>{
    const cls=['meeting','shoot','deadline','review','reminder','task','other'].includes(entry.type)?entry.type:'other';
    const content=(entry.time?'<span class="tf-plan-time">'+esc(entry.time)+'</span>':'<span class="tf-plan-time">◆</span>')+'<span class="tf-plan-title">'+esc(entry.title)+'</span>';
-   return '<button type="button" class="tf-plan-event tf-plan-'+cls+'" title="'+esc(entry.title+' · '+entry.client)+'" onclick="TFCalendarPlanner.open('+JSON.stringify(entry.kind)+','+JSON.stringify(entry.id)+')">'+content+'</button>';
+   return '<button type="button" class="tf-plan-event tf-plan-'+cls+'" title="'+esc(entry.title+' · '+entry.client)+'" onclick="TFCalendarPlanner.open('+esc(JSON.stringify(entry.kind))+','+esc(JSON.stringify(entry.id))+')">'+content+'</button>';
   }).join('');
   cells.push('<div class="tf-plan-day'+(out?' is-outside':'')+(day===nowKey?' is-today':'')+'">'+
     '<div class="tf-plan-day-head"><span class="tf-plan-day-number">'+date.getDate()+'</span>'+
-    (state.ctx?.role==='client'?'':'<button type="button" class="tf-plan-add" aria-label="Schedule on '+day+'" title="Add event" onclick="TFCalendarPlanner.schedule('+JSON.stringify(day)+')">+</button>')+
+    (state.ctx?.role==='client'?'':'<button type="button" class="tf-plan-add" aria-label="Schedule on '+day+'" title="Add event" onclick="TFCalendarPlanner.schedule('+esc(JSON.stringify(day))+')">+</button>')+
     '</div><div class="tf-plan-events">'+body+'</div>'+
     (items.length>max?'<span class="tf-plan-more">+'+(items.length-max)+' more</span>':'')+'</div>');
  }
