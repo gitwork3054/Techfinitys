@@ -254,3 +254,59 @@ html[data-theme] main#mainContent .tf-plan-reminder-empty{
 html[data-theme] main#mainContent .tf-plan-task{
   border-left-width:3px!important;font-weight:750!important;
 }
+
+
+/* Distinct, legible colours for task reminder chips throughout the calendar.
+   Colour is cosmetic only; task due dates and interactions are unchanged. */
+html[data-theme='dark'] main#mainContent .tf-plan-day .tf-plan-task{
+  color:#ffc6dc!important;
+  background:rgba(180,72,124,.23)!important;
+  border-left-color:#ff91c0!important;
+}
+html[data-theme='dark'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n+2){
+  color:#9fe9ef!important;
+  background:rgba(20,159,183,.21)!important;
+  border-left-color:#63d9e6!important;
+}
+html[data-theme='dark'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n+3){
+  color:#d7c2ff!important;
+  background:rgba(136,99,208,.23)!important;
+  border-left-color:#ae93ff!important;
+}
+html[data-theme='dark'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n){
+  color:#ffe0a5!important;
+  background:rgba(174,120,45,.24)!important;
+  border-left-color:#f2bc70!important;
+}
+html[data-theme='light'] main#mainContent .tf-plan-day .tf-plan-task{
+  color:#a33d70!important;
+  background:rgba(236,142,183,.20)!important;
+  border-left-color:#d870a5!important;
+}
+html[data-theme='light'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n+2){
+  color:#0d7583!important;
+  background:rgba(72,192,205,.17)!important;
+  border-left-color:#1ba5b4!important;
+}
+html[data-theme='light'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n+3){
+  color:#6847ac!important;
+  background:rgba(162,127,231,.18)!important;
+  border-left-color:#9b78d5!important;
+}
+html[data-theme='light'] main#mainContent .tf-plan-day .tf-plan-task:nth-child(4n){
+  color:#8f5d15!important;
+  background:rgba(239,191,108,.22)!important;
+  border-left-color:#d7a34a!important;
+}
+html[data-theme] main#mainContent .tf-plan-day .tf-plan-task .tf-plan-title{
+  color:inherit!important;
+  font-weight:800!important;
+}
+html[data-theme] main#mainContent .tf-plan-day .tf-plan-task .tf-plan-time{
+  color:inherit!important;
+  opacity:1!important;
+}
+html[data-theme] main#mainContent .tf-plan-day .tf-plan-more{
+  color:var(--accent)!important;
+  font-weight:800!important;
+}
