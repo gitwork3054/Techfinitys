@@ -21,8 +21,15 @@ function list(state){
   if(date)entries.push({date,key:key(date),type:(e.eventType||'other').toLowerCase(),kind:'event',id:String(e.id),title:e.title||'Event',client:e.clientName||'',time:date.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}),record:e});
  });
  (state.tasks||[]).forEach(t=>{
-  const date=parse(t.dueAt);
-  if(date)entries.push({date,key:key(date),type:'task',kind:'task',id:String(t.id),title:t.title||'Task due',client:t.clientName||t.projectName||'',time:'',record:t});
+  // Employees see reminders for their own assignments, while admins and
+  // managers can see all accessible tasks. Client visibility is API-scoped.
+  if(state.ctx?.role==='employee'){
+    const mine=String(t.assignedTo||'')===String(state.ctx.id)||
+      (Array.isArray(t.assigneeIds)&&t.assigneeIds.some(id=>String(id)===String(state.ctx.id)));
+    if(!mine)return;
+  }
+  const date=parse(t.dueAt||t.dueDate);
+  if(date)entries.push({date,key:key(date),type:'task',kind:'task',id:String(t.id),title:t.title||'Untitled task',client:t.clientName||t.projectName||'',time:'',record:t});
  });
  return entries.sort((a,b)=>a.date-b.date||a.title.localeCompare(b.title));
 }
@@ -93,7 +100,8 @@ function render(state){
   const items=lookup.get(day)||[],max=mode==='month'?3:8;
   const body=items.slice(0,max).map(entry=>{
    const cls=['meeting','shoot','deadline','review','reminder','task','other'].includes(entry.type)?entry.type:'other';
-   const content=(entry.time?'<span class="tf-plan-time">'+esc(entry.time)+'</span>':'<span class="tf-plan-time">◆</span>')+'<span class="tf-plan-title">'+esc(entry.title)+'</span>';
+   const content=(entry.kind==='task'?'<span class="tf-plan-time" aria-hidden="true">☑</span>':entry.time?'<span class="tf-plan-time">'+esc(entry.time)+'</span>':'<span class="tf-plan-time">◆</span>')+
+    '<span class="tf-plan-title">'+(entry.kind==='task'?'Due · ':'')+esc(entry.title)+'</span>';
    return '<button type="button" class="tf-plan-event tf-plan-'+cls+'" title="'+esc(entry.title+' · '+entry.client)+'" onclick="TFCalendarPlanner.open('+esc(JSON.stringify(entry.kind))+','+esc(JSON.stringify(entry.id))+')">'+content+'</button>';
   }).join('');
   cells.push('<div class="tf-plan-day'+(out?' is-outside':'')+(day===nowKey?' is-today':'')+'">'+
@@ -113,8 +121,22 @@ function render(state){
  (state.ctx?.role==='client'?'':'<button type="button" class="primary" onclick="TFCalendarPlanner.schedule()">＋ New event</button>')+
  '</div></div>';
  const legend=['shoot','meeting','deadline','review','reminder','task'].map(t=>'<span class="tf-plan-legend-'+t+'"><i></i>'+names[t]+'</span>').join('');
+ // A compact reminder strip highlights what is coming up without creating
+ // calendar events, duplicate tasks, emails or push notifications.
+ const upcoming=rows.filter(item=>item.kind==='task' &&
+   item.record.status!=='completed' &&
+   item.date>=new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate()));
+ const reminders='<div class="tf-plan-reminders" aria-label="Upcoming task reminders">'+
+  '<div class="tf-plan-reminder-head"><strong>☑ Upcoming task reminders</strong><span>'+upcoming.length+' due</span></div>'+
+  '<div class="tf-plan-reminder-items">'+
+  (upcoming.length?upcoming.slice(0,6).map(item=>
+    '<button type="button" class="tf-plan-reminder-item" onclick="TFCalendarPlanner.open('+esc(JSON.stringify('task'))+','+esc(JSON.stringify(item.id))+')" title="'+esc(item.title+' · '+item.client)+'">'+
+    '<span class="tf-plan-reminder-date">'+esc(item.date.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}))+'</span>'+
+    '<span class="tf-plan-reminder-title">'+esc(item.title)+'</span></button>'
+   ).join(''):'<span class="tf-plan-reminder-empty">No upcoming task deadlines</span>')+
+   '</div></div>';
  return heading+'<section class="tf-planner" aria-label="Calendar planner">'+tools+
- '<div class="tf-plan-legends">'+legend+'</div>'+
+ '<div class="tf-plan-legends">'+legend+'</div>'+reminders+
  '<div class="tf-plan-scroll"><div class="tf-plan-grid">'+
  days.map(d=>'<div class="tf-plan-weekday">'+d+'</div>').join('')+cells.join('')+
  '</div></div></section>';
