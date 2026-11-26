@@ -1,0 +1,119 @@
+/* Techfinitys panel mode extends to the ENTIRE sidebar, not only main cards.
+   Loaded last to defeat legacy static sidebar and collaboration dock colours.
+   No layout, stacking, navigation, scrolling or interaction changes. */
+html[data-theme][data-panel] .sidebar{
+  color:var(--tf-side-text)!important;
+  background:var(--tf-side-background)!important;
+  border-right:1px solid var(--tf-side-border)!important;
+  box-shadow:var(--tf-side-shadow)!important;
+  transition:background .24s ease,border-color .24s ease,box-shadow .24s ease,color .24s ease!important;
+}
+html[data-theme='light'][data-panel='aurora']{
+ --tf-side-background:radial-gradient(ellipse at 12% 12%,rgba(83,211,227,.27),transparent 50%),radial-gradient(ellipse at 100% 67%,rgba(187,135,243,.26),transparent 52%),linear-gradient(160deg,rgba(242,249,255,.90),rgba(235,231,254,.94));
+ --tf-side-text:#263450;--tf-side-secondary:#566985;--tf-side-border:rgba(104,153,208,.36);
+ --tf-side-hover:rgba(107,111,205,.13);--tf-side-card:rgba(255,255,255,.56);--tf-side-shadow:5px 0 24px rgba(72,124,193,.10);
+}
+html[data-theme='dark'][data-panel='aurora']{
+ --tf-side-background:radial-gradient(ellipse at 12% 8%,rgba(24,159,184,.30),transparent 52%),radial-gradient(ellipse at 94% 68%,rgba(126,71,191,.36),transparent 60%),linear-gradient(162deg,#0c2034,#171b3c 60%,#251a40);
+ --tf-side-text:#f0f5ff;--tf-side-secondary:#bfcee9;--tf-side-border:rgba(135,164,248,.39);
+ --tf-side-hover:rgba(140,150,255,.19);--tf-side-card:rgba(172,188,250,.10);--tf-side-shadow:5px 0 32px rgba(77,74,209,.22);
+}
+html[data-theme='light'][data-panel='glass']{
+ --tf-side-background:linear-gradient(150deg,rgba(243,250,255,.62),rgba(236,234,255,.54));
+ --tf-side-text:#263451;--tf-side-secondary:#596985;--tf-side-border:rgba(145,174,224,.38);
+ --tf-side-hover:rgba(116,139,210,.12);--tf-side-card:rgba(255,255,255,.49);--tf-side-shadow:5px 0 22px rgba(77,96,158,.10);
+}
+html[data-theme='dark'][data-panel='glass']{
+ --tf-side-background:linear-gradient(160deg,rgba(25,39,75,.69),rgba(34,31,72,.66));
+ --tf-side-text:#f1f5ff;--tf-side-secondary:#becee9;--tf-side-border:rgba(158,188,249,.35);
+ --tf-side-hover:rgba(151,169,243,.17);--tf-side-card:rgba(198,212,255,.09);--tf-side-shadow:6px 0 24px rgba(0,0,0,.18);
+}
+html[data-theme='light'][data-panel='solid']{
+ --tf-side-background:#edf2fa;--tf-side-text:#25334c;--tf-side-secondary:#53647f;
+ --tf-side-border:#d5dfed;--tf-side-hover:#e0e9f8;--tf-side-card:#fff;--tf-side-shadow:none;
+}
+html[data-theme='dark'][data-panel='solid']{
+ --tf-side-background:#1b2944;--tf-side-text:#f1f5ff;--tf-side-secondary:#b7c6df;
+ --tf-side-border:#435574;--tf-side-hover:#2b3b5c;--tf-side-card:#243755;--tf-side-shadow:none;
+}
+html[data-theme='light'][data-panel='minimal']{
+ --tf-side-background:#fff;--tf-side-text:#263246;--tf-side-secondary:#627089;
+ --tf-side-border:#e2e8f0;--tf-side-hover:#f2f5f9;--tf-side-card:#f8fafc;--tf-side-shadow:none;
+}
+html[data-theme='dark'][data-panel='minimal']{
+ --tf-side-background:#141b2a;--tf-side-text:#f1f3f8;--tf-side-secondary:#b4c0d2;
+ --tf-side-border:#303c51;--tf-side-hover:#222c40;--tf-side-card:#1b2536;--tf-side-shadow:none;
+}
+html[data-theme][data-panel='glass'] .sidebar{
+  backdrop-filter:blur(26px) saturate(145%)!important;
+  -webkit-backdrop-filter:blur(26px) saturate(145%)!important;
+}
+html[data-theme][data-panel]:is([data-panel='aurora'],[data-panel='solid'],[data-panel='minimal']) .sidebar{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html[data-theme][data-panel] .sidebar :is(.brand span,.workspace strong){
+  color:var(--tf-side-text)!important;
+  -webkit-text-fill-color:var(--tf-side-text)!important;
+}
+html[data-theme][data-panel] .sidebar :is(
+ .workspace small,.nav-label,.os-nav-group>span,
+ .sidebar-bottom,.sidebar-bottom small,
+ .tf-recent-head>span,.tf-recent-empty
+){
+  color:var(--tf-side-secondary)!important;
+}
+html[data-theme][data-panel] .sidebar :is(.workspace,.tf-dock-btn,.tf-recent-search){
+  background:var(--tf-side-card)!important;
+  color:var(--tf-side-text)!important;
+  border-color:var(--tf-side-border)!important;
+}
+html[data-theme][data-panel] .sidebar :is(.workspace,.sidebar-bottom,.tf-recent,.tf-chat-dock){
+  border-color:var(--tf-side-border)!important;
+}
+html[data-theme][data-panel] .sidebar nav button:not(.active){
+  color:var(--tf-side-text)!important;
+  background:transparent!important;
+}
+html[data-theme][data-panel] .sidebar nav button:not(.active):hover,
+html[data-theme][data-panel] .sidebar .tf-recent-item:hover,
+html[data-theme][data-panel] .sidebar .tf-dock-btn:hover{
+  background:var(--tf-side-hover)!important;
+  color:var(--tf-side-text)!important;
+}
+html[data-theme][data-panel] .sidebar :is(
+ .tf-recent-item,.tf-recent-head>button,.tf-folder-icon,
+ .tf-dock-btn,.tf-dock-btn small
+){
+  color:var(--tf-side-text)!important;
+}
+html[data-theme][data-panel] .sidebar .tf-recent-item{
+  background:transparent!important;
+}
+html[data-theme][data-panel] .sidebar .tf-recent-item:focus-visible{
+  background:var(--tf-side-hover)!important;
+}
+html[data-theme][data-panel] .sidebar .tf-recent-head>button:hover{
+  color:var(--tf-side-text)!important;
+  background:var(--tf-side-hover)!important;
+}
+html[data-theme][data-panel] .sidebar .tf-recent-search::placeholder{
+  color:var(--tf-side-secondary)!important;
+}
+html[data-theme][data-panel] .sidebar .tf-dock-btn.active{
+  background:var(--tf-side-hover)!important;
+  border-color:var(--tf-side-border)!important;
+}
+html[data-theme][data-panel] .sidebar :is(.tf-dock-compose,.sidebar nav button.active){
+  color:#fff!important;
+}
+html[data-theme][data-panel='minimal'] .sidebar :is(.workspace,.tf-dock-btn){
+  box-shadow:none!important;
+  border-radius:8px!important;
+}
+html[data-theme][data-panel='aurora'] .sidebar .workspace{
+  box-shadow:0 5px 20px rgba(93,121,217,.10)!important;
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-theme][data-panel] .sidebar{transition:none!important}
+}
+html[data-reduce-motion='yes'][data-panel] .sidebar{transition:none!important}
